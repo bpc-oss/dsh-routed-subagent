@@ -1,0 +1,30 @@
+{
+  "name": "dsh-preset-subagent",
+  "description": "Global DeepSeek Harness plugin: subagent_as_preset — run a one-shot subagent fully mounted on ANY agent preset, from ANY session, with per-call model/provider override and a model-availability pre-check.",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "private": true,
+  "license": "MIT",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "agent-preset",
+    "subagent",
+    "delegation",
+    "multi-agent"
+  ],
+  "scripts": {
+    "build": "echo no-build: plain ESM plugin",
+    "check": "node --check lib/index.js"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-subagent": "workspace:^",
+    "@deepseek-ai/dsh-tools": "workspace:^"
+  }
+}
