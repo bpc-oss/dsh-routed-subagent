@@ -47,5 +47,10 @@
     "LICENSE",
     "cordis.patch.yml",
     ".gitignore"
-  ]
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
 }
