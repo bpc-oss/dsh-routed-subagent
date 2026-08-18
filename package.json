@@ -1,7 +1,7 @@
 {
-  "name": "dsh-preset-subagent",
-  "description": "Global DeepSeek Harness plugin: subagent_as_preset — run a one-shot subagent fully mounted on ANY agent preset, from ANY session, with per-call model/provider override and a model-availability pre-check.",
+  "name": "dsh-routed-subagent",
   "version": "0.1.0",
+  "description": "Global DeepSeek Harness plugin: subagent_routed — run a one-shot subagent fully mounted on ANY agent preset, from ANY session, with per-call model/provider override and a model-availability pre-check.",
   "type": "module",
   "main": "lib/index.js",
   "private": true,
@@ -15,6 +15,10 @@
     "delegation",
     "multi-agent"
   ],
+  "author": "bpc-oss",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "echo no-build: plain ESM plugin",
     "check": "node --check lib/index.js"
@@ -26,5 +30,15 @@
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-subagent": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bpc-oss/dsh-routed-subagent.git"
+  },
+  "homepage": "https://github.com/bpc-oss/dsh-routed-subagent",
+  "bugs": {
+    "url": "https://github.com/bpc-oss/dsh-routed-subagent/issues"
   }
 }
+
+

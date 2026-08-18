@@ -1,4 +1,4 @@
-# dsh-preset-subagent
+# dsh-routed-subagent
 
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 全局插件：让**任意会话**都能派一个**完整挂载到任意 agent preset** 的一次性（one-shot）子代理，支持**按次指定模型/provider** 和**模型可用性预检**。
 
@@ -18,21 +18,21 @@
 纯 ESM 包。包目录需要一个 `node_modules` junction 指向 harness 安装（插件静态 import `@deepseek-ai/*`，Node ESM 按 realpath 解析）：
 
 ```bat
-mklink /J "E:\ai-files\dsh-preset-subagent\node_modules" "<harness>\resources\host\node_modules"
+mklink /J "<plugin-dir>\node_modules" "<harness>\resources\host\node_modules"
 ```
 
 然后热装配到 profile（免重启，且持久化进 `bundles` 列表，重启自动装配）：
 
 ```
-dev_install_package(dir=E:\ai-files\dsh-preset-subagent)
+dev_install_package(dir=<plugin-dir>)
 ```
 
-改代码后热重载：`dev_reload_package(dsh-preset-subagent)`。
+改代码后热重载：`dev_reload_package(dsh-routed-subagent)`。
 
 ## 用法
 
 ```
-subagent_as_preset(
+subagent_routed(
   prompt="用 dev 工程师标准审查这个仓库",
   preset="dev",                    # roster 中的任意 preset id
   description="dev 审查",          # 显示名
@@ -51,7 +51,7 @@ subagent_as_preset(
 
 ## 原理
 
-1. 自定义 subagent provider（`preset-mount`）复刻官方 one-shot 进程内驱动（`dsh-subagent-in-process-driver` 的 `startInProcessRun`），**唯一关键改动**：子代理 setup 改为 `async` 并 `await agentPresets.mount(childCtx, targetPreset)`（替代认父）。
+1. 自定义 subagent provider（`routed-mount`）复刻官方 one-shot 进程内驱动（`dsh-subagent-in-process-driver` 的 `startInProcessRun`），**唯一关键改动**：子代理 setup 改为 `async` 并 `await agentPresets.mount(childCtx, targetPreset)`（替代认父）。
 2. `agents.create` 会 await setup（`dsh-agent-loop` 已确认）——async mount 在未发布的创建窗口内执行，失败整体回滚。
 3. 子代理会话 header 记录 `agentPreset: <目标>`（覆盖父方值）——冷读按真实运行的组装重建。
 4. 工具分两段顺序收尾：**先 result 后 dispose**（与官方 `settleForegroundRun` 一致）——若并行会把 dispose 的取消标志抢先，导致子代理"一启动就 aborted"。
@@ -73,3 +73,5 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
+

@@ -1,4 +1,4 @@
-# dsh-preset-subagent
+# dsh-routed-subagent
 
 A global [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets **any session dispatch a one-shot subagent fully mounted on ANY agent preset**, with **per-call model/provider override** and a **model-availability pre-check**.
 
@@ -19,24 +19,24 @@ The plugin is a plain ESM package. Point the package directory at the DeepSeek H
 
 ```bash
 # the package's node_modules junction must point at the harness install:
-#   E:\ai-files\dsh-preset-subagent\node_modules  ->  <harness>\resources\host\node_modules
+#   <plugin-dir>\node_modules  ->  <harness>\resources\host\node_modules
 # (create it with: mklink /J node_modules "<harness>\resources\host\node_modules")
 ```
 
 Then install into the profile:
 
 ```
-dev_install_package(dir=E:\ai-files\dsh-preset-subagent)
+dev_install_package(dir=<plugin-dir>)
 ```
 
-This hot-assembles the plugin (no restart) and persists it in the profile `bundles` list so it survives restarts. To reload after editing: `dev_reload_package(dsh-preset-subagent)`.
+This hot-assembles the plugin (no restart) and persists it in the profile `bundles` list so it survives restarts. To reload after editing: `dev_reload_package(dsh-routed-subagent)`.
 
 > **Windows junction requirement** — the plugin statically imports `@deepseek-ai/*` packages. Those resolve via Node ESM from the package location, so the package directory needs a `node_modules` junction to the harness install (Node resolves through realpath). See the note above.
 
 ## Usage
 
 ```
-subagent_as_preset(
+subagent_routed(
   prompt="Use the dev engineer standard to review this repository",
   preset="dev",                    # any preset id from the roster
   description="dev review",        # display label
@@ -57,7 +57,7 @@ Behavior:
 
 ## How it works
 
-1. A custom subagent provider (`preset-mount`) re-implements the official one-shot in-process driver (`dsh-subagent-in-process-driver`'s `startInProcessRun`) with **one load-bearing change**: the child setup is `async` and awaits `agentPresets.mount(childCtx, targetPreset)` instead of composing from the parent.
+1. A custom subagent provider (`routed-mount`) re-implements the official one-shot in-process driver (`dsh-subagent-in-process-driver`'s `startInProcessRun`) with **one load-bearing change**: the child setup is `async` and awaits `agentPresets.mount(childCtx, targetPreset)` instead of composing from the parent.
 2. `agents.create` awaits the setup (verified in `dsh-agent-loop`), so the async mount runs inside the unpublished creation window; a failure rolls the whole child back.
 3. The child's session header records `agentPreset: <target>` (overriding the parent value), so cold reads rebuild the child under the composition it actually ran.
 4. The tool settles the run in two sequential fault-tolerant phases — result first, then dispose — matching the official `settleForegroundRun` (racing dispose against result would skip the child's turn and return "aborted").
@@ -79,3 +79,5 @@ The plugin is intentionally small (~270 lines) with zero build step.
 ## License
 
 MIT
+
+
