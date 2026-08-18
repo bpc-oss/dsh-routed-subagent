@@ -24,12 +24,12 @@
     "check": "node --check lib/index.js"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-subagent": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-presets": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-session": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-subagent": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.0.1-rc.1"
   },
   "repository": {
     "type": "git",
@@ -38,7 +38,8 @@
   "homepage": "https://github.com/bpc-oss/dsh-routed-subagent",
   "bugs": {
     "url": "https://github.com/bpc-oss/dsh-routed-subagent/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
-
-

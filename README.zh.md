@@ -13,21 +13,44 @@
 - **官方子代理生态**：one-shot 生命周期事件、UI 行、轨迹可见；返回子代理最终输出。
 - **provider 注册幂等**：多 preset 并存不会重复注册 host 平面 provider。
 
+## 分发
+
+**仅 GitHub**。本插件**不发布到 npm**，通过挂载包目录安装（见下）。`peerDependencies` 以真实 semver 声明、仅作元数据，不参与 npm 解析。
+
+**兼容性**：在 DeepSeek Harness **rc.7+** 验证（本插件依赖的 async 子代理 setup 是较新的 harness 行为）。
+
 ## 安装
 
-纯 ESM 包。包目录需要一个 `node_modules` junction 指向 harness 安装（插件静态 import `@deepseek-ai/*`，Node ESM 按 realpath 解析）：
+纯 ESM 包，带 `cordis.patch.yml` bundle 声明。
+
+### 1. 把包链接进 harness 安装
+
+插件静态 import `@deepseek-ai/*` 包（Node ESM 按 realpath 解析）。在包目录创建指向 harness 安装的 `node_modules` junction/软链：
 
 ```bat
+:: Windows
 mklink /J "<plugin-dir>\node_modules" "<harness>\resources\host\node_modules"
 ```
 
-然后热装配到 profile（免重启，且持久化进 `bundles` 列表，重启自动装配）：
-
+```sh
+# POSIX (Linux/macOS)
+ln -s "<harness>/resources/host/node_modules" "<plugin-dir>/node_modules"
 ```
-dev_install_package(dir=<plugin-dir>)
+
+### 2. 把 bundle 加进 profile
+
+把包加进 profile 的 `dsh.profile.bundles` 列表（如 `<dshHome>/profiles/web/package.json`）：
+
+```json
+{
+  "dependencies": { "dsh-routed-subagent": "link:<plugin-dir>" },
+  "dsh": { "profile": { "bundles": ["...", "dsh-routed-subagent"] } }
+}
 ```
 
-改代码后热重载：`dev_reload_package(dsh-routed-subagent)`。
+仓库里的 `cordis.patch.yml` 就是注册插件的 bundle 层；包被列入 `bundles` 时自动应用。
+
+> 若使用 [dsh-super-injector](https://github.com/liustack/dsh-super-injector)，快捷方式为 `dev_install_package(dir=<plugin-dir>)`（热装配免重启）、改后 `dev_reload_package(dsh-routed-subagent)`。重启后两种方式都由 `bundles` 列表自动装配。
 
 ## 用法
 
@@ -36,7 +59,7 @@ subagent_routed(
   prompt="用 dev 工程师标准审查这个仓库",
   preset="dev",                    # roster 中的任意 preset id
   description="dev 审查",          # 显示名
-  max_depth=2,                     # 递归预算（默认 3）
+  max_depth=2,                     # 递归预算（默认 3，须 >= 0）
   model="deepseek-v4-flash-free",  # 可选：子代理本次使用的模型
   provider="opencode",             # 可选：该模型所属 provider
 )
@@ -44,9 +67,10 @@ subagent_routed(
 
 | 输入 | 行为 |
 |---|---|
-| `preset` 缺失/无效 | 报错并列出全部可用 preset id |
-| `model` 在 provider 下无效 | 快速失败，列出该 provider 的候选模型 |
+| `preset` 无效/无法解析 | 报错并透传 roster 可用 preset id |
+| `model` 在 provider 下无效 | 快速失败，列出该 provider 的候选模型（原始错误保留在 `cause`） |
 | `model` 省略 | 子代理继承当前会话模型（向后兼容） |
+| `max_depth` 负数/非有限 | 工具层校验报错 |
 | 正常调用 | 子代理完整挂载目标 preset，跑一轮，返回最终输出 |
 
 ## 原理
@@ -60,6 +84,7 @@ subagent_routed(
 
 - **仅 one-shot**：子代理是单轮专家调用（适合审查/审计/调研）。continuable（`send_message`）子代理仍继承父方 preset——这是平台约束。
 - **模型错误以 `error` 呈现**：与官方一致，返回 `stopReason`；底层 LLM 错误细节不内嵌在工具结果里（可见于子代理会话日志）。
+- **预检是有条件的**：仅当 harness 暴露 `llm` 服务**且**存在 provider 路由（显式 `provider` 或继承父方）时才执行预检；否则跳过、直接派发。
 - **provider 可用性取决于环境**：预检只校验模型目录；真正调用仍需 provider 可达且 key 有效。
 
 ## 开发
@@ -68,10 +93,8 @@ subagent_routed(
 node --check lib/index.js   # 语法检查
 ```
 
-插件 ~270 行，无构建步骤。
+插件为单个 ~330 行文件、零构建。CI 每次推送执行 `node --check`。
 
 ## License
 
 MIT
-
-

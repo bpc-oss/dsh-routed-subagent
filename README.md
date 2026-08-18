@@ -6,32 +6,51 @@ The stock `subagent` / `subagent_fork` tools force children to inherit the PAREN
 
 ## Features
 
-- **Any preset, any session** — registered on the host plane (global layer); every preset's conversations get the tool. New presets need zero configuration.
+- **Any preset, any session** — registered on the host plane (global layer); every preset's conversations get the tool. **New presets need zero configuration.**
 - **Full preset mount** — the child runs under the target preset's standing composition (not a persona copy): identity, mission section, skills, tools.
 - **Per-call model override** — `model` / `provider` arguments route the child's LLM call to a different model than this session's (via the official `resolveChildAgentOptions` channel).
 - **Model pre-check** — an invalid model fails fast with the provider's candidate list instead of an opaque child failure.
 - **Official subagent ecosystem** — one-shot lifecycle events, UI rows, trajectory; returns the child's final output.
 - **Idempotent provider registration** — multiple presets can mount the row; the host-plane provider registry is never duplicated.
 
+## Distribution
+
+**GitHub-only.** This plugin is not published to npm. Install it by mounting the package directory (see below). `peerDependencies` are declared with real semver ranges as metadata; they are not used for npm resolution.
+
+**Compatibility**: tested against DeepSeek Harness **rc.7+** (the async child setup that this plugin relies on is a recent harness behavior).
+
 ## Install
 
-The plugin is a plain ESM package. Point the package directory at the DeepSeek Harness installation and hot-install it:
+The plugin is a plain ESM package with a `cordis.patch.yml` bundle declaration.
 
-```bash
-# the package's node_modules junction must point at the harness install:
-#   <plugin-dir>\node_modules  ->  <harness>\resources\host\node_modules
-# (create it with: mklink /J node_modules "<harness>\resources\host\node_modules")
+### 1. Link the package into the harness install
+
+The plugin statically imports `@deepseek-ai/*` packages, which resolve via Node ESM from the package location. Create a `node_modules` junction/symlink in the package directory pointing at the harness install:
+
+```bat
+:: Windows
+mklink /J "<plugin-dir>\node_modules" "<harness>\resources\host\node_modules"
 ```
 
-Then install into the profile:
-
+```sh
+# POSIX (Linux/macOS)
+ln -s "<harness>/resources/host/node_modules" "<plugin-dir>/node_modules"
 ```
-dev_install_package(dir=<plugin-dir>)
+
+### 2. Add the bundle to a profile
+
+Add the package to your profile's `dsh.profile.bundles` list (e.g. `<dshHome>/profiles/web/package.json`):
+
+```json
+{
+  "dependencies": { "dsh-routed-subagent": "link:<plugin-dir>" },
+  "dsh": { "profile": { "bundles": ["...", "dsh-routed-subagent"] } }
+}
 ```
 
-This hot-assembles the plugin (no restart) and persists it in the profile `bundles` list so it survives restarts. To reload after editing: `dev_reload_package(dsh-routed-subagent)`.
+`cordis.patch.yml` in this repo is the bundle layer that registers the plugin; it is applied automatically when the package is listed in `bundles`.
 
-> **Windows junction requirement** — the plugin statically imports `@deepseek-ai/*` packages. Those resolve via Node ESM from the package location, so the package directory needs a `node_modules` junction to the harness install (Node resolves through realpath). See the note above.
+> If you use [dsh-super-injector](https://github.com/liustack/dsh-super-injector), the shortcut is `dev_install_package(dir=<plugin-dir>)` (hot-assemble, no restart) and `dev_reload_package(dsh-routed-subagent)` after edits. Restarts re-assemble from the `bundles` list either way.
 
 ## Usage
 
@@ -40,7 +59,7 @@ subagent_routed(
   prompt="Use the dev engineer standard to review this repository",
   preset="dev",                    # any preset id from the roster
   description="dev review",        # display label
-  max_depth=2,                     # recursion budget (default 3)
+  max_depth=2,                     # recursion budget (default 3, must be >= 0)
   model="deepseek-v4-flash-free",  # optional: per-call model for the child
   provider="opencode",             # optional: provider for that model
 )
@@ -50,9 +69,10 @@ Behavior:
 
 | input | behavior |
 |---|---|
-| `preset` missing/invalid | error listing all available preset ids |
-| `model` invalid for the provider | fail-fast error listing the provider's candidate models |
+| `preset` invalid / unresolvable | error, with the roster's available preset ids |
+| `model` invalid for the provider | fail-fast error listing the provider's candidate models (original error preserved as `cause`) |
 | `model` omitted | child inherits this session's model (backwards compatible) |
+| `max_depth` negative / non-finite | tool-layer validation error |
 | valid call | child fully mounted on the target preset, runs one turn, returns final output |
 
 ## How it works
@@ -66,7 +86,8 @@ Behavior:
 
 - **One-shot only** — the child is a single-turn expert call (great for review / audit / research). Continuable children (`send_message`) still inherit the parent preset; that is a platform constraint.
 - **Model errors surface as `error`** — like the official tools, the plugin returns `stopReason`; low-level LLM error details are not embedded in the tool result (visible in the child session log).
-- **Provider availability is environment-specific** — the pre-check validates the model against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
+- **Pre-check is conditional** — the model pre-check runs only when the harness exposes an `llm` service AND a provider route exists (explicit `provider` or the parent's). Without either, it is skipped and the call proceeds.
+- **Provider availability is environment-specific** — the pre-check validates against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
 
 ## Development
 
@@ -74,10 +95,8 @@ Behavior:
 node --check lib/index.js   # syntax
 ```
 
-The plugin is intentionally small (~270 lines) with zero build step.
+The plugin is a single ~330-line file with zero build step. CI runs `node --check` on every push.
 
 ## License
 
 MIT
-
-

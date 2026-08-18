@@ -1,4 +1,8 @@
 node_modules/
 *.tgz
-cordis.patch.yml
+cordis.patch.yml.gen
+*.log
+npm-debug.log*
+.env
+.env.*
 .DS_Store

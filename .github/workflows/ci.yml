@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: node --check lib/index.js
+      - name: package.json valid
+        run: node -e "const p=require('./package.json'); if(!p.name||!p.version||!p.license) process.exit(1); console.log('package ok:', p.name, p.version)"
+      - name: License present
+        run: test -f LICENSE && echo ok
+      - name: READMEs present
+        run: test -f README.md && test -f README.zh.md && echo ok
+      - name: No secrets / machine paths in tracked files
+        run: |
+          if grep -rniE 'api[_-]?key|password|secret|gho_|sk-[A-Za-z0-9]{20}|C:\\\\Users|E:\\\\ai-files' lib package.json README.md README.zh.md LICENSE .gitignore cordis.patch.yml; then
+            echo "FAIL: sensitive content or machine-specific paths found" && exit 1
+          else
+            echo ok
+          fi

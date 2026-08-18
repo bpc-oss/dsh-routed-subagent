@@ -1,0 +1,9 @@
+# dsh-routed-subagent bundle layer — applied when a profile lists this
+# package in dsh.profile.bundles (dsh.bundle.patch declaration).
+# subagent_routed tool: run a one-shot subagent fully mounted on a chosen
+# agent preset from any session.
+- insert:
+    - id: dsh-routed-subagent
+      name: 'dsh-routed-subagent'
+
+
