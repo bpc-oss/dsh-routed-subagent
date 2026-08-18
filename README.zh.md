@@ -1,5 +1,8 @@
 # dsh-routed-subagent
 
+
+![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/github/v/release/bpc-oss/dsh-routed-subagent) ![CI](https://github.com/bpc-oss/dsh-routed-subagent/actions/workflows/ci.yml/badge.svg)
+
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 全局插件：让**任意会话**都能派一个**完整挂载到任意 agent preset** 的一次性（one-shot）子代理，支持**按次指定模型/provider** 和**模型可用性预检**。
 
 官方 `subagent` / `subagent_fork` 工具强制子代理**继承父方 preset**。本插件用自定义 subagent provider 替代：其 **async 子代理 setup** 调用 `agentPresets.mount(childCtx, <preset>)`——子代理获得**目标 preset 的完整组装**（persona、提示词段、技能目录、工具），而不是 persona 拷贝。
@@ -50,7 +53,7 @@ ln -s "<harness>/resources/host/node_modules" "<plugin-dir>/node_modules"
 
 仓库里的 `cordis.patch.yml` 就是注册插件的 bundle 层；包被列入 `bundles` 时自动应用。
 
-> 若使用 [dsh-super-injector](https://github.com/liustack/dsh-super-injector)，快捷方式为 `dev_install_package(dir=<plugin-dir>)`（热装配免重启）、改后 `dev_reload_package(dsh-routed-subagent)`。重启后两种方式都由 `bundles` 列表自动装配。
+> 提示：若你的部署提供热装配工具（如 super-injector 风格的 `dev_install_package(dir=...)`），可代替上面的手动步骤；重启后两种方式都由 `bundles` 列表自动装配。
 
 ## 用法
 
@@ -93,9 +96,10 @@ subagent_routed(
 node --check lib/index.js   # 语法检查
 ```
 
-插件为单个 ~330 行文件、零构建。CI 每次推送执行 `node --check`。
+插件为单个 ~350 行文件、零构建。CI 每次推送执行 `node --check`。
 
 ## License
 
 MIT
+
 

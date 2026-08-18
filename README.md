@@ -1,5 +1,8 @@
 # dsh-routed-subagent
 
+
+![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/github/v/release/bpc-oss/dsh-routed-subagent) ![CI](https://github.com/bpc-oss/dsh-routed-subagent/actions/workflows/ci.yml/badge.svg)
+
 A global [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets **any session dispatch a one-shot subagent fully mounted on ANY agent preset**, with **per-call model/provider override** and a **model-availability pre-check**.
 
 The stock `subagent` / `subagent_fork` tools force children to inherit the PARENT's preset. This plugin replaces that with a custom subagent provider whose async child setup calls `agentPresets.mount(childCtx, <preset>)` — so the child adopts the TARGET preset's complete composition: persona, prompt sections, skill catalog, and tools.
@@ -50,7 +53,7 @@ Add the package to your profile's `dsh.profile.bundles` list (e.g. `<dshHome>/pr
 
 `cordis.patch.yml` in this repo is the bundle layer that registers the plugin; it is applied automatically when the package is listed in `bundles`.
 
-> If you use [dsh-super-injector](https://github.com/liustack/dsh-super-injector), the shortcut is `dev_install_package(dir=<plugin-dir>)` (hot-assemble, no restart) and `dev_reload_package(dsh-routed-subagent)` after edits. Restarts re-assemble from the `bundles` list either way.
+> Tip: if your deployment provides a hot-assembly helper (e.g. a super-injector-style `dev_install_package(dir=...)`), you can use it instead of the manual steps above; restarts re-assemble from the `bundles` list either way.
 
 ## Usage
 
@@ -95,9 +98,10 @@ Behavior:
 node --check lib/index.js   # syntax
 ```
 
-The plugin is a single ~330-line file with zero build step. CI runs `node --check` on every push.
+The plugin is a single ~350-line file with zero build step. CI runs `node --check` on every push.
 
 ## License
 
 MIT
+
 
