@@ -17,7 +17,7 @@
 
 **仅 GitHub**。本插件**不发布到 npm**，通过挂载包目录安装（见下）。`peerDependencies` 以真实 semver 声明、仅作元数据，不参与 npm 解析。
 
-**兼容性**：在 DeepSeek Harness **rc.7+** 验证（本插件依赖的 async 子代理 setup 是较新的 harness 行为）。
+**兼容性**：目标为 DeepSeek Harness **rc.7**（行为已对照 rc.7 源码核实）（本插件依赖的 async 子代理 setup 是较新的 harness 行为）。
 
 ## 安装
 
@@ -59,7 +59,7 @@ subagent_routed(
   prompt="用 dev 工程师标准审查这个仓库",
   preset="dev",                    # roster 中的任意 preset id
   description="dev 审查",          # 显示名
-  max_depth=2,                     # 递归预算（默认 3，须 >= 0）
+  max_depth=2,                     # 递归预算（默认 3；正整数 >= 1）
   model="deepseek-v4-flash-free",  # 可选：子代理本次使用的模型
   provider="opencode",             # 可选：该模型所属 provider
 )
@@ -70,7 +70,7 @@ subagent_routed(
 | `preset` 无效/无法解析 | 报错并透传 roster 可用 preset id |
 | `model` 在 provider 下无效 | 快速失败，列出该 provider 的候选模型（原始错误保留在 `cause`） |
 | `model` 省略 | 子代理继承当前会话模型（向后兼容） |
-| `max_depth` 负数/非有限 | 工具层校验报错 |
+| `max_depth` 非正整数 | 工具层校验报错 |
 | 正常调用 | 子代理完整挂载目标 preset，跑一轮，返回最终输出 |
 
 ## 原理
@@ -78,12 +78,12 @@ subagent_routed(
 1. 自定义 subagent provider（`routed-mount`）复刻官方 one-shot 进程内驱动（`dsh-subagent-in-process-driver` 的 `startInProcessRun`），**唯一关键改动**：子代理 setup 改为 `async` 并 `await agentPresets.mount(childCtx, targetPreset)`（替代认父）。
 2. `agents.create` 会 await setup（`dsh-agent-loop` 已确认）——async mount 在未发布的创建窗口内执行，失败整体回滚。
 3. 子代理会话 header 记录 `agentPreset: <目标>`（覆盖父方值）——冷读按真实运行的组装重建。
-4. 工具分两段顺序收尾：**先 result 后 dispose**（与官方 `settleForegroundRun` 一致）——若并行会把 dispose 的取消标志抢先，导致子代理"一启动就 aborted"。
+4. 工具分两段顺序收尾：**先 result 后 dispose**（与官方 `settleForegroundRun` 顺序一致）——若并行会把 dispose 的取消标志抢先，导致子代理"一启动就 aborted"。
 
 ## 已知限制
 
 - **仅 one-shot**：子代理是单轮专家调用（适合审查/审计/调研）。continuable（`send_message`）子代理仍继承父方 preset——这是平台约束。
-- **模型错误以 `error` 呈现**：与官方一致，返回 `stopReason`；底层 LLM 错误细节不内嵌在工具结果里（可见于子代理会话日志）。
+- **失败语义**：与官方前台 subagent 工具一致——子代理以 `error` / `refusal` / `max-tokens` 结束时工具调用**抛错**（附部分输出）；仅 `completed` 与调用方取消的 `aborted` 作为返回值。底层 LLM 错误细节见子代理会话日志。
 - **预检是有条件的**：仅当 harness 暴露 `llm` 服务**且**存在 provider 路由（显式 `provider` 或继承父方）时才执行预检；否则跳过、直接派发。
 - **provider 可用性取决于环境**：预检只校验模型目录；真正调用仍需 provider 可达且 key 有效。
 
@@ -98,3 +98,4 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+

@@ -21,9 +21,16 @@ jobs:
         run: test -f LICENSE && echo ok
       - name: READMEs present
         run: test -f README.md && test -f README.zh.md && echo ok
+      # M3: install the real published peers and load the plugin — catches API drift
+      - name: Install peers
+        run: npm install --no-audit --no-fund
+      - name: Smoke (load + apply + schema + boundaries)
+        run: node scripts/smoke.mjs
+      # M2/N6: guard over git-tracked files; ERE must match SINGLE backslashes
+      # (C:\Users in prose). `\\` in the ERE matches one literal backslash.
       - name: No secrets / machine paths in tracked files
         run: |
-          if grep -rniE 'api[_-]?key|password|secret|gho_|sk-[A-Za-z0-9]{20}|C:\\\\Users|E:\\\\ai-files' lib package.json README.md README.zh.md LICENSE .gitignore cordis.patch.yml; then
+          if grep -rniE 'api[_-]?key|password|secret|gho_|ghp_|C:[\\/]Users|E:[\\/]ai-files|/Users/|/home/' $(git ls-files) | grep -v '^\.github/workflows/ci.yml:'; then
             echo "FAIL: sensitive content or machine-specific paths found" && exit 1
           else
             echo ok

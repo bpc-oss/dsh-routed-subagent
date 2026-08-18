@@ -17,7 +17,7 @@ The stock `subagent` / `subagent_fork` tools force children to inherit the PAREN
 
 **GitHub-only.** This plugin is not published to npm. Install it by mounting the package directory (see below). `peerDependencies` are declared with real semver ranges as metadata; they are not used for npm resolution.
 
-**Compatibility**: tested against DeepSeek Harness **rc.7+** (the async child setup that this plugin relies on is a recent harness behavior).
+**Compatibility**: targets DeepSeek Harness **rc.7** (behavior verified against rc.7 sources) (the async child setup that this plugin relies on is a recent harness behavior).
 
 ## Install
 
@@ -59,7 +59,7 @@ subagent_routed(
   prompt="Use the dev engineer standard to review this repository",
   preset="dev",                    # any preset id from the roster
   description="dev review",        # display label
-  max_depth=2,                     # recursion budget (default 3, must be >= 0)
+  max_depth=2,                     # recursion budget (default 3; positive integer >= 1)
   model="deepseek-v4-flash-free",  # optional: per-call model for the child
   provider="opencode",             # optional: provider for that model
 )
@@ -72,7 +72,7 @@ Behavior:
 | `preset` invalid / unresolvable | error, with the roster's available preset ids |
 | `model` invalid for the provider | fail-fast error listing the provider's candidate models (original error preserved as `cause`) |
 | `model` omitted | child inherits this session's model (backwards compatible) |
-| `max_depth` negative / non-finite | tool-layer validation error |
+| `max_depth` not a positive integer | tool-layer validation error |
 | valid call | child fully mounted on the target preset, runs one turn, returns final output |
 
 ## How it works
@@ -80,12 +80,12 @@ Behavior:
 1. A custom subagent provider (`routed-mount`) re-implements the official one-shot in-process driver (`dsh-subagent-in-process-driver`'s `startInProcessRun`) with **one load-bearing change**: the child setup is `async` and awaits `agentPresets.mount(childCtx, targetPreset)` instead of composing from the parent.
 2. `agents.create` awaits the setup (verified in `dsh-agent-loop`), so the async mount runs inside the unpublished creation window; a failure rolls the whole child back.
 3. The child's session header records `agentPreset: <target>` (overriding the parent value), so cold reads rebuild the child under the composition it actually ran.
-4. The tool settles the run in two sequential fault-tolerant phases — result first, then dispose — matching the official `settleForegroundRun` (racing dispose against result would skip the child's turn and return "aborted").
+4. The tool settles the run in two sequential fault-tolerant phases — result first, then dispose — matching the official `settleForegroundRun` ordering (racing dispose against result would skip the child's turn and return "aborted").
 
 ## Known limitations
 
 - **One-shot only** — the child is a single-turn expert call (great for review / audit / research). Continuable children (`send_message`) still inherit the parent preset; that is a platform constraint.
-- **Model errors surface as `error`** — like the official tools, the plugin returns `stopReason`; low-level LLM error details are not embedded in the tool result (visible in the child session log).
+- **Failure semantics** — like the official foreground subagent tool, a child that ends with `error` / `refusal` / `max-tokens` makes the tool call THROW (with any partial output attached); only `completed` and caller-initiated `aborted` return as values. Low-level LLM error details live in the child session log.
 - **Pre-check is conditional** — the model pre-check runs only when the harness exposes an `llm` service AND a provider route exists (explicit `provider` or the parent's). Without either, it is skipped and the call proceeds.
 - **Provider availability is environment-specific** — the pre-check validates against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
 
@@ -100,3 +100,4 @@ The plugin is a single ~330-line file with zero build step. CI runs `node --chec
 ## License
 
 MIT
+
