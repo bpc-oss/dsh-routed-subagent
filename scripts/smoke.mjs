@@ -19,8 +19,19 @@ const ctx = {
   subagents: {
     registerProvider(p) { providers.push(p) },
     getProvider() { return undefined },
+    start: async () => ({
+      id: 'run-1',
+      result: Promise.resolve({ output: [{ type: 'text', text: 'ok' }], stopReason: 'completed' }),
+      dispose: async () => {},
+    }),
   },
-  agentPresets: { resolve: async () => ({ id: 'x', path: 'x' }), list: async () => [] },
+  agentPresets: {
+    resolve: async (id) => {
+      if (id === 'nope') throw new Error('unknown preset "nope"')
+      return { id, path: 'x' }
+    },
+    list: async () => [{ id: 'x' }],
+  },
 }
 
 mod.apply(ctx, {})
@@ -38,7 +49,12 @@ const call = (args) => t.execute(args, { agent: { id: 'p', options: { provider: 
 for (const bad of [0, -1, 2.5, '3', NaN]) {
   await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: bad }), /max_depth/)
 }
-// valid integer passes parameter validation (will fail later at preset resolve stub — acceptable)
+// unknown preset is rejected by the resolve pre-check (message passed through)
 await assert.rejects(call({ prompt: 'x', preset: 'nope', description: 'd', max_depth: 3 }), /cannot resolve agent preset/)
+// a valid call dispatches through the stub provider and returns the result
+const ok = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3 })
+assert.equal(ok.kind, 'foreground')
+assert.equal(ok.stopReason, 'completed')
+assert.equal(ok.output[0].text, 'ok')
 
-console.log('smoke OK: module loads against real peers, provider + tool registered, schema compiled, max_depth boundaries enforced')
+console.log('smoke OK: module loads against real peers, provider + tool registered, schema compiled, boundaries + dispatch path verified')
