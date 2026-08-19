@@ -10,6 +10,7 @@
 ## 特性
 
 - **任意 preset、任意会话**：注册在 host 平面（全局层），所有 preset 的会话都有该工具；**新增 preset 零配置**。
+- **默认后台、可并行派发**：调用立即返回 job id（同官方 subagent 工具）；主对话可继续做别的事或并行派多个子代理，中止主对话**不会**取消子代理（用 job_kill 停止）。设 `run_in_background: false` 则内联等待。
 - **完整挂载**：子代理运行在目标 preset 的 standing 组装下（身份、使命段、技能、工具全用目标 preset 的）。
 - **按次指定模型**：`model` / `provider` 参数把子代理的 LLM 调用路由到与当前会话不同的模型（走官方 `resolveChildAgentOptions` 通道）。
 - **模型预检**：无效模型**快速失败**并列出该 provider 的候选模型，而不是等到子代理晦涩地失败。
@@ -63,6 +64,7 @@ subagent_routed(
   preset="dev",                    # roster 中的任意 preset id
   description="dev 审查",          # 显示名
   max_depth=2,                     # 递归预算（默认 3；正整数 >= 1）
+  run_in_background=true,       # 默认 true：后台 job，主对话继续
   model="deepseek-v4-flash-free",  # 可选：子代理本次使用的模型
   provider="opencode",             # 可选：该模型所属 provider
 )
@@ -73,7 +75,8 @@ subagent_routed(
 | `preset` 无效/无法解析 | 报错并透传 roster 可用 preset id |
 | `model` 在 provider 下无效 | 快速失败，列出该 provider 的候选模型（原始错误保留在 `cause`） |
 | `model` 省略 | 子代理继承当前会话模型（向后兼容） |
-| `max_depth` 非正整数 | 工具层校验报错 |
+| max_depth 非正整数 | 工具层校验报错 |
+| un_in_background（默认 true） | 立即返回后台 job id；job_output 收结果 / job_kill 停止；中止主对话不影响子代理 |
 | 正常调用 | 子代理完整挂载目标 preset，跑一轮，返回最终输出 |
 
 ## 原理
@@ -85,7 +88,7 @@ subagent_routed(
 
 ## 已知限制
 
-- **仅 one-shot**：子代理是单轮专家调用（适合审查/审计/调研）。continuable（`send_message`）子代理仍继承父方 preset——这是平台约束。
+- **one-shot（非 continuable）**：子代理是单轮专家调用（适合审查/审计/调研）。continuable（`send_message`）子代理仍继承父方 preset——这是平台约束。
 - **失败语义**：与官方前台 subagent 工具一致——子代理以 `error` / `refusal` / `max-tokens` 结束时工具调用**抛错**（附部分输出）；仅 `completed` 与调用方取消的 `aborted` 作为返回值。底层 LLM 错误细节见子代理会话日志。
 - **预检是有条件的**：仅当 harness 暴露 `llm` 服务**且**存在 provider 路由（显式 `provider` 或继承父方）时才执行预检；否则跳过、直接派发。
 - **provider 可用性取决于环境**：预检只校验模型目录；真正调用仍需 provider 可达且 key 有效。
@@ -101,5 +104,8 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
+
+
 
 

@@ -9,7 +9,8 @@ The stock `subagent` / `subagent_fork` tools force children to inherit the PAREN
 
 ## Features
 
-- **Any preset, any session** — registered on the host plane (global layer); every preset's conversations get the tool. **New presets need zero configuration.**
+
+- **Background by default, parallel dispatch** — the call returns a job id immediately (like the stock subagent tool); the conversation stays free to do other work or dispatch more children in parallel, and aborting the conversation does NOT cancel the child (stop it with job_kill). Set un_in_background: false to wait inline.**
 - **Full preset mount** — the child runs under the target preset's standing composition (not a persona copy): identity, mission section, skills, tools.
 - **Per-call model override** — `model` / `provider` arguments route the child's LLM call to a different model than this session's (via the official `resolveChildAgentOptions` channel).
 - **Model pre-check** — an invalid model fails fast with the provider's candidate list instead of an opaque child failure.
@@ -63,6 +64,7 @@ subagent_routed(
   preset="dev",                    # any preset id from the roster
   description="dev review",        # display label
   max_depth=2,                     # recursion budget (default 3; positive integer >= 1)
+  run_in_background=true,       # default true: background job, conversation continues
   model="deepseek-v4-flash-free",  # optional: per-call model for the child
   provider="opencode",             # optional: provider for that model
 )
@@ -75,7 +77,8 @@ Behavior:
 | `preset` invalid / unresolvable | error, with the roster's available preset ids |
 | `model` invalid for the provider | fail-fast error listing the provider's candidate models (original error preserved as `cause`) |
 | `model` omitted | child inherits this session's model (backwards compatible) |
-| `max_depth` not a positive integer | tool-layer validation error |
+| max_depth not a positive integer | tool-layer validation error |
+| un_in_background (default true) | background job id returned immediately; collect with job_output / stop with job_kill; aborting the conversation leaves the child running |
 | valid call | child fully mounted on the target preset, runs one turn, returns final output |
 
 ## How it works
@@ -87,7 +90,7 @@ Behavior:
 
 ## Known limitations
 
-- **One-shot only** — the child is a single-turn expert call (great for review / audit / research). Continuable children (`send_message`) still inherit the parent preset; that is a platform constraint.
+- **One-shot, not continuable** — the child is a single-turn expert call (great for review / audit / research). Continuable children (`send_message`) still inherit the parent preset; that is a platform constraint.
 - **Failure semantics** — like the official foreground subagent tool, a child that ends with `error` / `refusal` / `max-tokens` makes the tool call THROW (with any partial output attached); only `completed` and caller-initiated `aborted` return as values. Low-level LLM error details live in the child session log.
 - **Pre-check is conditional** — the model pre-check runs only when the harness exposes an `llm` service AND a provider route exists (explicit `provider` or the parent's). Without either, it is skipped and the call proceeds.
 - **Provider availability is environment-specific** — the pre-check validates against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
@@ -103,5 +106,6 @@ The plugin is a single ~350-line file with zero build step. CI runs `node --chec
 ## License
 
 MIT
+
 
 
