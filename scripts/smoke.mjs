@@ -29,16 +29,23 @@ const services = {
   },
   jobs: { start(spec) { bgSpec = spec; return 'job-1' } },
 }
+const guards = []
 const ctx = {
   effect(fn) { return fn() },
   logger: { info() {}, warn() {} },
-  tools: { register(t) { tools.push(t); return () => {} } },
+  tools: { register(t) { tools.push(t); return () => {} }, guard(g) { guards.push(g); return () => {} } },
   subagents: services.subagents,
   agentPresets: services.agentPresets,
   get(key) { return services[key] },
 }
 
 mod.apply(ctx, {})
+// stock-subagent guard registered (exec.name based)
+assert.equal(guards.length, 1)
+assert.equal(guards[0]({ name: 'subagent' }), 'the stock subagent tool is disabled — use subagent_routed instead (full preset mount, background by default, live progress, fork + continuable modes)')
+assert.equal(guards[0]({ name: 'subagent_fork' }), 'the stock subagent_fork tool is disabled — use subagent_routed instead (full preset mount, background by default, live progress, fork + continuable modes)')
+assert.equal(guards[0]({ name: 'subagent_routed' }), undefined, 'guard does not touch subagent_routed')
+assert.equal(guards[0]({ name: 'other' }), undefined)
 assert.equal(providers.length, 2)
 const mount = providers.find((p) => p.name === 'routed-mount')
 const fork = providers.find((p) => p.name === 'routed-fork')
