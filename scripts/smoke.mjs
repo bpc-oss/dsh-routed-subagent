@@ -62,6 +62,9 @@ assert.ok(bgSpec.run && typeof bgSpec.run === 'function')
 const bgRun = bgSpec.run()
 assert.ok(bgRun.cancel && typeof bgRun.cancel === 'function')
 assert.ok(bgRun.done && typeof bgRun.done.then === 'function')
+assert.ok(bgRun.readOutput && typeof bgRun.readOutput === 'function', 'readOutput hook present (live progress)')
+const prog = bgRun.readOutput()
+assert.ok(typeof prog === 'string' && prog.length > 0, 'readOutput returns a progress string')
 
 const fg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: false })
 assert.equal(fg.kind, 'foreground')
@@ -69,3 +72,4 @@ assert.equal(fg.stopReason, 'completed')
 assert.equal(fg.output[0].text, 'ok')
 
 console.log('smoke OK: background (default) + foreground verified')
+

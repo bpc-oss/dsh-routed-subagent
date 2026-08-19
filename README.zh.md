@@ -10,7 +10,8 @@
 ## 特性
 
 - **任意 preset、任意会话**：注册在 host 平面（全局层），所有 preset 的会话都有该工具；**新增 preset 零配置**。
-- **默认后台、可并行派发**：调用立即返回 job id（同官方 subagent 工具）；主对话可继续做别的事或并行派多个子代理，中止主对话**不会**取消子代理（用 job_kill 停止）。设 `run_in_background: false` 则内联等待。
+
+- **运行中实时进度**：后台子代理暴露 eadOutput hook——job_output 读 job 时返回实时快照（耗时/idle、事件数、最近的工具/步骤/文本），2 分钟无新事件时标记「可能卡住」，据此判断方向并及时 job_kill。
 - **完整挂载**：子代理运行在目标 preset 的 standing 组装下（身份、使命段、技能、工具全用目标 preset 的）。
 - **按次指定模型**：`model` / `provider` 参数把子代理的 LLM 调用路由到与当前会话不同的模型（走官方 `resolveChildAgentOptions` 通道）。
 - **模型预检**：无效模型**快速失败**并列出该 provider 的候选模型，而不是等到子代理晦涩地失败。
@@ -104,6 +105,7 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
 
 
 
