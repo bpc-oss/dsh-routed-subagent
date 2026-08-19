@@ -59,27 +59,33 @@ Add the package to your profile's `dsh.profile.bundles` list (e.g. `<dshHome>/pr
 ## Usage
 
 ```
-subagent_routed(
-  prompt="Use the dev engineer standard to review this repository",
-  preset="dev",                    # any preset id from the roster
-  description="dev review",        # display label
-  max_depth=2,                     # recursion budget (default 3; positive integer >= 1)
-  run_in_background=true,       # default true: background job, conversation continues
-  model="deepseek-v4-flash-free",  # optional: per-call model for the child
-  provider="opencode",             # optional: provider for that model
-)
+subagent_routed(prompt="Use the dev engineer standard to review this repository", preset="dev", description="dev review")          # background one-shot
+subagent_routed(prompt="Continue the review", preset="dev-reviewer", description="follow-up", fork=true)  # inherits THIS conversation
+subagent_routed(preset="dev", prompt="Audit this repo", description="audit", continuable=true)            # send_message(<subagentId>, ...) later
 ```
 
 Behavior:
 
+Modes (one tool, four shapes):
+
+| mode | how | returns |
+|---|---|---|
+| one-shot background (default) | `run_in_background: true` (default) | job id immediately; collect with `job_output` (live progress) / stop with `job_kill`; aborting the conversation leaves the child running |
+| one-shot foreground | `run_in_background: false` | blocks until the child returns its final output |
+| fork | `fork: true` | job id / run result — the child is seeded with this conversation's COMPLETED turns (inherits the context) then mounts the requested preset on top |
+| continuable | `continuable: true` | durable subagent id — continue it later with `send_message(subagentId, ...)`; the child mounts the requested preset and keeps it across resumes |
+
+Parameters:
+
 | input | behavior |
 |---|---|
 | `preset` invalid / unresolvable | error, with the roster's available preset ids |
-| `model` invalid for the provider | fail-fast error listing the provider's candidate models (original error preserved as `cause`) |
-| `model` omitted | child inherits this session's model (backwards compatible) |
-| max_depth not a positive integer | tool-layer validation error |
-| un_in_background (default true) | background job id returned immediately; collect with job_output / stop with job_kill; aborting the conversation leaves the child running |
-| valid call | child fully mounted on the target preset, runs one turn, returns final output |
+| `model` / `provider` | per-call model override (fail-fast pre-check lists the provider's candidates; original error preserved as `cause`) |
+| `max_tokens` | output/token cap for the child's LLM calls (positive integer) |
+| `tool_filter` | DENY-only tool mask on top of the preset's tool surface (`{ deny: string[] }`, e.g. deny shell tools for a read-only audit) |
+| `max_depth` not a positive integer | tool-layer validation error |
+| `fork` + `continuable` together | supported (continuable fork seeds the parent's completed turns) |
+| valid call | child fully mounted on the target preset |
 
 ## How it works
 
@@ -95,6 +101,23 @@ Behavior:
 - **Pre-check is conditional** — the model pre-check runs only when the harness exposes an `llm` service AND a provider route exists (explicit `provider` or the parent's). Without either, it is skipped and the call proceeds.
 - **Provider availability is environment-specific** — the pre-check validates against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
 
+
+## Platform patch (continuable + preset mount)
+
+`continuable` mode mounts the requested preset on the child **and keeps it across resumes** — that required a small, additive patch to the open-source `@deepseek-ai/dsh-subagent`:
+
+- **install-level junction** (single assembly point): `resources\host\node_modules\@deepseek-ai\dsh-subagent` → the patched fork (the original package is backed up beside it). The plugin's startup assertion fails loud if the loaded instance is not the patched fork — never silently degrade. Do NOT add a profile-local `link:` dependency to `@deepseek-ai/dsh-subagent` (that would split module identity and defeat the patch).
+- **patch surface** (additive only — official paths with no `preset` are byte-identical):
+  - `applyChildComposition`: `composition.preset` mounts the TARGET preset instead of joining the parent's (`composeFrom` skipped — a second bind would throw; delegation context / persona / toolFilter kept); appends `agent-preset/selected(target)` so fork seeds replaying the parent's selection events cannot shadow the header on cold rebuild
+  - `materializeTracked` setup is async (awaited by the agent factory) and still returns the `{ commit }` contract
+  - continuable descriptors gain an optional `preset` field (version 2 → 3 for continuable only; one-shot stays 2 — a rollback rejects v3 descriptors cleanly as NOT_RESUMABLE, and legacy v2 continuable descriptors still parse)
+  - `coldResume` rebuilds the child under the SAME preset from `descriptor.preset`; a missing/broken preset surfaces a named-preset error instead of a generic "unavailable"
+- **rollback**: restore the backed-up package directory, delete the junction, restart — official behavior returns (pre-existing preset-continuable children become NOT_RESUMABLE, as designed).
+
+## Disabling the stock subagent tools
+
+Once the full stock surface is ported, `subagent_routed` becomes the single delegation entry point: a global `tools.guard` denies `subagent` / `subagent_fork` at execution with a redirect message (`config.disableStockSubagent ?? true`; set `false` to keep them). Scope: every preset that mounts this plugin row.
+
 ## Development
 
 ```bash
@@ -106,6 +129,8 @@ The plugin is a single ~350-line file with zero build step. CI runs `node --chec
 ## License
 
 MIT
+
+
 
 
 

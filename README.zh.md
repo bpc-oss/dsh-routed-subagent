@@ -59,6 +59,33 @@ ln -s "<harness>/resources/host/node_modules" "<plugin-dir>/node_modules"
 
 ## 用法
 
+三种形态（一个工具）：
+
+| 模式 | 用法 | 返回 |
+|---|---|---|
+| 后台 one-shot（默认） | `run_in_background: true`（默认） | 立即返回 job id；`job_output`（实时进度）收 / `job_kill` 停；中止主对话不影响子代理 |
+| 前台 one-shot | `run_in_background: false` | 阻塞到子代理返回最终输出 |
+| fork | `fork: true` | 子代理继承本对话已完成轮次（上下文），再挂载目标 preset |
+| continuable | `continuable: true` | 返回持久 subagent id；之后用 `send_message(subagentId, ...)` 续话；子代理挂载目标 preset 并在续话/重启后保持 |
+
+```
+subagent_routed(prompt="用 dev 标准审查本仓库", preset="dev", description="dev 审查")          # 后台 one-shot
+subagent_routed(prompt="继续审查", preset="dev-reviewer", description="跟进", fork=true)       # 继承本对话
+subagent_routed(preset="dev", prompt="审计本仓库", description="审计", continuable=true)       # 之后 send_message 续话
+```
+
+## 平台补丁（continuable + preset 挂载）
+
+`continuable` 模式让子代理挂载目标 preset 并在续话/重启后保持——需要对开源的 `@deepseek-ai/dsh-subagent` 做**纯增量**补丁：
+- **安装级 junction**（唯一装配点）：`resources\host\node_modules\@deepseek-ai\dsh-subagent` → 补丁 fork（原包已备份）；插件启动断言在补丁未生效时 fail loud；**不要**给 `@deepseek-ai/dsh-subagent` 加 profile-local `link:`（会分裂模块身份、补丁失效）
+- **补丁面**（只做加法，无 preset 的官方路径逐字节不变）：`applyChildComposition` 的 `composition.preset` 挂载目标 preset（跳过 composeFrom 防双绑定；保留 delegation/persona/toolFilter）+ append `agent-preset/selected(target)`（防 fork seed 遮蔽 header）；`materializeTracked` setup 变 async（工厂 await，保持 `{commit}` 契约）；continuable descriptor 加可选 `preset`（continuable 版本 2→3，one-shot 保持 2——回滚时 v3 干净 NOT_RESUMABLE，旧 v2 仍可解析）；`coldResume` 从 `descriptor.preset` 重建同一 preset，preset 缺失时报指名错误
+- **回滚**：恢复备份原包、删 junction、重启——官方行为恢复（已建的 preset-continuable 子代理按设计成为 NOT_RESUMABLE）
+
+## 禁用官方 subagent
+
+全部官方能力移植完成后，`subagent_routed` 成为唯一委派入口：全局 `tools.guard` 在执行期拒绝 `subagent` / `subagent_fork` 并引导到 routed（`config.disableStockSubagent ?? true`；设 `false` 保留）。范围：挂载本插件行的 preset。
+
+
 ```
 subagent_routed(
   prompt="用 dev 工程师标准审查这个仓库",
@@ -105,6 +132,7 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
 
 
 
