@@ -96,7 +96,7 @@ Parameters:
 
 ## Known limitations
 
-- **One-shot, not continuable** — the child is a single-turn expert call (great for review / audit / research). Continuable children (`send_message`) still inherit the parent preset; that is a platform constraint.
+- **preset generation drift (known limitation)** — `mount` re-resolves the preset by id on every creation/resume, so editing a preset file between continuable turns hands later turns a NEWER generation of that preset (the official `composeFrom` path joins the parent's exact standing instance instead). Documented behavior; restore the preset to its original state to keep turns consistent.
 - **Failure semantics** — like the official foreground subagent tool, a child that ends with `error` / `refusal` / `max-tokens` makes the tool call THROW (with any partial output attached); only `completed` and caller-initiated `aborted` return as values. Low-level LLM error details live in the child session log.
 - **Pre-check is conditional** — the model pre-check runs only when the harness exposes an `llm` service AND a provider route exists (explicit `provider` or the parent's). Without either, it is skipped and the call proceeds.
 - **Provider availability is environment-specific** — the pre-check validates against the runtime model catalog, but a reachable provider with a valid key is still required for the call to succeed.
@@ -106,7 +106,7 @@ Parameters:
 
 `continuable` mode mounts the requested preset on the child **and keeps it across resumes** — that required a small, additive patch to the open-source `@deepseek-ai/dsh-subagent`:
 
-- **install-level junction** (single assembly point): `resources\host\node_modules\@deepseek-ai\dsh-subagent` → the patched fork (the original package is backed up beside it). The plugin's startup assertion fails loud if the loaded instance is not the patched fork — never silently degrade. Do NOT add a profile-local `link:` dependency to `@deepseek-ai/dsh-subagent` (that would split module identity and defeat the patch).
+- **install-level junction** (single assembly point): `resources\host\node_modules\@deepseek-ai\dsh-subagent` → the patched fork (the original package is backed up beside it). The plugin's startup assertion logs a loud warning if the loaded instance is not the patched fork — continuable+preset will silently degrade to the parent composition, so check the log on upgrade. Do NOT add a profile-local `link:` dependency to `@deepseek-ai/dsh-subagent` (that would split module identity and defeat the patch).
 - **patch surface** (additive only — official paths with no `preset` are byte-identical):
   - `applyChildComposition`: `composition.preset` mounts the TARGET preset instead of joining the parent's (`composeFrom` skipped — a second bind would throw; delegation context / persona / toolFilter kept); appends `agent-preset/selected(target)` so fork seeds replaying the parent's selection events cannot shadow the header on cold rebuild
   - `materializeTracked` setup is async (awaited by the agent factory) and still returns the `{ commit }` contract
@@ -129,6 +129,7 @@ The plugin is a single ~350-line file with zero build step. CI runs `node --chec
 ## License
 
 MIT
+
 
 
 

@@ -116,7 +116,7 @@ subagent_routed(
 
 ## 已知限制
 
-- **one-shot（非 continuable）**：子代理是单轮专家调用（适合审查/审计/调研）。continuable（`send_message`）子代理仍继承父方 preset——这是平台约束。
+- **preset generation drift（已知限制）**：`mount` 在每次创建/续话时按 id 重解析 preset——两次续话之间编辑 preset 文件会让后续轮次挂到该 preset 的**新一代**（官方 `composeFrom` 加入父的 standing 实例、不重解析）。文档化行为；保持 preset 不变即可维持轮次一致。
 - **失败语义**：与官方前台 subagent 工具一致——子代理以 `error` / `refusal` / `max-tokens` 结束时工具调用**抛错**（附部分输出）；仅 `completed` 与调用方取消的 `aborted` 作为返回值。底层 LLM 错误细节见子代理会话日志。
 - **预检是有条件的**：仅当 harness 暴露 `llm` 服务**且**存在 provider 路由（显式 `provider` 或继承父方）时才执行预检；否则跳过、直接派发。
 - **provider 可用性取决于环境**：预检只校验模型目录；真正调用仍需 provider 可达且 key 有效。
@@ -132,6 +132,8 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
+
 
 
 
