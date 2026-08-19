@@ -8,6 +8,7 @@ assert.equal(mod.name, 'dsh-routed-subagent')
 const tools = []
 const providers = []
 let bgSpec = null
+let continuableCall = null
 const services = {
   subagents: {
     registerProvider(p) { providers.push(p) },
@@ -17,6 +18,7 @@ const services = {
       result: Promise.resolve({ output: [{ type: 'text', text: 'ok' }], stopReason: 'completed' }),
       dispose: async () => {},
     }),
+    startContinuable: async (spec) => { continuableCall = spec; return { childId: 'sub-ct-1' } },
   },
   agentPresets: {
     resolve: async (id) => {
@@ -86,11 +88,21 @@ assert.equal(typeof bgSpec.run, 'function')
 const fkRun = bgSpec.run()
 assert.ok(fkRun.cancel && fkRun.done, 'fork background run has cancel+done')
 
+// continuable dispatch returns a durable subagent id via startContinuable
+const ct = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, continuable: true })
+assert.equal(ct.kind, 'continuable')
+assert.equal(ct.subagentId, 'sub-ct-1')
+assert.ok(continuableCall, 'startContinuable called with a spec')
+assert.equal(continuableCall.provider, 'routed-mount')
+assert.equal(continuableCall.request.preset, 'dev')
+const ctFork = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, continuable: true, fork: true })
+assert.equal(continuableCall.provider, 'routed-fork', 'continuable+fork routes to routed-fork')
+
 const fg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: false })
 assert.equal(fg.kind, 'foreground')
 assert.equal(fg.stopReason, 'completed')
 assert.equal(fg.output[0].text, 'ok')
 
-console.log('smoke OK: background (default) + foreground + fork verified, persona removed, tool_filter deny-only, capabilities.toolFilter=true, routed-fork provider registered')
+console.log('smoke OK: background + foreground + fork + continuable verified; persona removed; tool_filter deny-only; capabilities.toolFilter=true; routed-fork provider registered')
 
 
