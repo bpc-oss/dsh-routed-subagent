@@ -77,9 +77,9 @@ subagent_routed(preset="dev", prompt="审计本仓库", description="审计", co
 ## 平台补丁（continuable + preset 挂载）
 
 `continuable` 模式让子代理挂载目标 preset 并在续话/重启后保持——需要对开源的 `@deepseek-ai/dsh-subagent` 做**纯增量**补丁：
-- **安装级 junction**（唯一装配点）：`resources\host\node_modules\@deepseek-ai\dsh-subagent` → 补丁 fork（原包已备份）；插件启动断言在补丁未生效时 fail loud；**不要**给 `@deepseek-ai/dsh-subagent` 加 profile-local `link:`（会分裂模块身份、补丁失效）
+- **安装级 junction**（唯一装配点）：`resources\host\node_modules\@deepseek-ai\dsh-subagent` → 补丁 fork `E:\ai-files\@deepseek-ai\dsh-subagent`（纯净原包备份于 `E:\ai-files\@deepseek-ai\dsh-subagent.orig`）；插件启动断言在补丁未生效时 fail loud；**不要**给 `@deepseek-ai/dsh-subagent` 加 profile-local `link:`（会分裂模块身份、补丁失效）
 - **补丁面**（只做加法，无 preset 的官方路径逐字节不变）：`applyChildComposition` 的 `composition.preset` 挂载目标 preset（跳过 composeFrom 防双绑定；保留 delegation/persona/toolFilter）+ append `agent-preset/selected(target)`（防 fork seed 遮蔽 header）；`materializeTracked` setup 变 async（工厂 await，保持 `{commit}` 契约）；continuable descriptor 加可选 `preset`（continuable 版本 2→3，one-shot 保持 2——回滚时 v3 干净 NOT_RESUMABLE，旧 v2 仍可解析）；`coldResume` 从 `descriptor.preset` 重建同一 preset，preset 缺失时报指名错误
-- **回滚**：恢复备份原包、删 junction、重启——官方行为恢复（已建的 preset-continuable 子代理按设计成为 NOT_RESUMABLE）
+- **回滚**：删安装 junction、把 `E:\ai-files\@deepseek-ai\dsh-subagent.orig` 复制回安装位、重启——官方行为恢复（已建的 preset-continuable 子代理按设计 NOT_RESUMABLE）。注意：若其他 profile 树（如 `dsh-continuous-worker\node_modules\@deepseek-ai\dsh-subagent`）仍指向 fork，需一并处理避免悬空
 
 ## 禁用官方 subagent
 
@@ -132,6 +132,7 @@ node --check lib/index.js   # 语法检查
 ## License
 
 MIT
+
 
 
 

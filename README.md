@@ -112,7 +112,7 @@ Parameters:
   - `materializeTracked` setup is async (awaited by the agent factory) and still returns the `{ commit }` contract
   - continuable descriptors gain an optional `preset` field (version 2 → 3 for continuable only; one-shot stays 2 — a rollback rejects v3 descriptors cleanly as NOT_RESUMABLE, and legacy v2 continuable descriptors still parse)
   - `coldResume` rebuilds the child under the SAME preset from `descriptor.preset`; a missing/broken preset surfaces a named-preset error instead of a generic "unavailable"
-- **rollback**: restore the backed-up package directory, delete the junction, restart — official behavior returns (pre-existing preset-continuable children become NOT_RESUMABLE, as designed).
+- **rollback**: delete the install junction (esources\host\node_modules\@deepseek-ai\dsh-subagent), copy E:\ai-files\@deepseek-ai\dsh-subagent.orig back into place, restart — official behavior returns (pre-existing preset-continuable children become NOT_RESUMABLE, as designed). Note: keep the fork directory present if any other profile tree junctions to it (dsh-continuous-worker\node_modules\@deepseek-ai\dsh-subagent) still exist, or re-point them.
 
 ## Disabling the stock subagent tools
 
@@ -129,6 +129,7 @@ The plugin is a single ~350-line file with zero build step. CI runs `node --chec
 ## License
 
 MIT
+
 
 
 
