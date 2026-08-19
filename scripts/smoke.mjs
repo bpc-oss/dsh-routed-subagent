@@ -37,14 +37,19 @@ const ctx = {
 }
 
 mod.apply(ctx, {})
-assert.equal(providers.length, 1)
-assert.equal(providers[0].name, 'routed-mount')
-assert.equal(providers[0].inheritsParentContext, false)
-assert.deepEqual(providers[0].capabilities, { toolFilter: true, persona: false, depthLimit: true, outputSchema: false })
+assert.equal(providers.length, 2)
+const mount = providers.find((p) => p.name === 'routed-mount')
+const fork = providers.find((p) => p.name === 'routed-fork')
+assert.ok(mount && fork, 'both routed-mount and routed-fork providers registered')
+assert.equal(mount.inheritsParentContext, false)
+assert.equal(fork.inheritsParentContext, true)
+assert.deepEqual(mount.capabilities, { toolFilter: true, persona: false, depthLimit: true, outputSchema: false })
+assert.deepEqual(fork.capabilities, mount.capabilities)
 assert.equal(tools.length, 1)
 assert.equal(tools[0].name, 'subagent_routed')
 assert.ok(tools[0].parameters.properties.max_depth)
 assert.ok(tools[0].parameters.properties.run_in_background)
+assert.ok(tools[0].parameters.properties.fork)
 assert.ok(!tools[0].parameters.properties.persona, 'persona parameter removed')
 
 const t = tools[0]
@@ -72,11 +77,20 @@ assert.ok(bgRun.readOutput && typeof bgRun.readOutput === 'function', 'readOutpu
 const prog = bgRun.readOutput()
 assert.ok(typeof prog === 'string' && prog.length > 0, 'readOutput returns a progress string')
 
+// fork dispatch routes to the routed-fork provider
+const fk = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, fork: true })
+assert.equal(fk.kind, 'background')
+assert.equal(fk.jobId, 'job-1')
+assert.ok(bgSpec, 'fork jobs.start received a run spec')
+assert.equal(typeof bgSpec.run, 'function')
+const fkRun = bgSpec.run()
+assert.ok(fkRun.cancel && fkRun.done, 'fork background run has cancel+done')
+
 const fg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: false })
 assert.equal(fg.kind, 'foreground')
 assert.equal(fg.stopReason, 'completed')
 assert.equal(fg.output[0].text, 'ok')
 
-console.log('smoke OK: background (default) + foreground verified, persona removed, tool_filter deny-only, capabilities.toolFilter=true')
+console.log('smoke OK: background (default) + foreground + fork verified, persona removed, tool_filter deny-only, capabilities.toolFilter=true, routed-fork provider registered')
 
 
