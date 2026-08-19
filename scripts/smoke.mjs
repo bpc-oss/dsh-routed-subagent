@@ -40,11 +40,12 @@ mod.apply(ctx, {})
 assert.equal(providers.length, 1)
 assert.equal(providers[0].name, 'routed-mount')
 assert.equal(providers[0].inheritsParentContext, false)
-assert.deepEqual(providers[0].capabilities, { toolFilter: false, persona: false, depthLimit: true, outputSchema: false })
+assert.deepEqual(providers[0].capabilities, { toolFilter: true, persona: false, depthLimit: true, outputSchema: false })
 assert.equal(tools.length, 1)
 assert.equal(tools[0].name, 'subagent_routed')
 assert.ok(tools[0].parameters.properties.max_depth)
 assert.ok(tools[0].parameters.properties.run_in_background)
+assert.ok(!tools[0].parameters.properties.persona, 'persona parameter removed')
 
 const t = tools[0]
 const call = (args) => t.execute(args, { agent: { id: 'p', options: { provider: 'bai', model: 'm' } } })
@@ -53,8 +54,13 @@ for (const bad of [0, -1, 2.5, '3', NaN]) {
   await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: bad }), /max_depth/)
 }
 await assert.rejects(call({ prompt: 'x', preset: 'nope', description: 'd', max_depth: 3 }), /cannot resolve agent preset/)
+// new-param validation
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, max_tokens: 0 }), /max_tokens/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: {} }), /tool_filter/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /allow/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } }), /tool_filter/)
 
-const bg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3 })
+const bg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, max_tokens: 4096, tool_filter: { deny: ['write'] } })
 assert.equal(bg.kind, 'background')
 assert.equal(bg.jobId, 'job-1')
 assert.ok(bgSpec && bgSpec.kind === 'subagent' && bgSpec.owner.id === 'p')
@@ -71,5 +77,6 @@ assert.equal(fg.kind, 'foreground')
 assert.equal(fg.stopReason, 'completed')
 assert.equal(fg.output[0].text, 'ok')
 
-console.log('smoke OK: background (default) + foreground verified')
+console.log('smoke OK: background (default) + foreground verified, persona removed, tool_filter deny-only, capabilities.toolFilter=true')
+
 
