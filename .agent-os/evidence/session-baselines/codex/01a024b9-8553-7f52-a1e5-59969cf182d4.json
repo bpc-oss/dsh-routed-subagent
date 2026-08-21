@@ -1,0 +1,227 @@
+{
+  "schema_version": 2,
+  "runtime": "codex",
+  "host_id": "021e2d2de7733d844a626705d2f2fe747ab267d14e4c3c1572406ec80d14e458",
+  "session_id": "01a024b9-8553-7f52-a1e5-59969cf182d4",
+  "session_nonce": "5ac6241681f2aba425e6cb2863f822a369abc3369e8f72bc99afe462230b54a1",
+  "project_root": "E:\\ai-files\\dsh-routed-subagent",
+  "hook_bundle_id": "e37a19b24609117e094bb88878992ebc512c487eca01c50003c23de88f1aef7d",
+  "hook_bundle_status": "verified",
+  "hook_bundle_reasons": [],
+  "git_available": false,
+  "git_head": null,
+  "git_status_porcelain": [],
+  "baseline_content_states": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "state": "file",
+      "sha256": "ce65d6b4bfb967e3289d1ceca152d7dd91ebbdfef67e192fdba3f5eb8253ff51",
+      "length": 1582
+    },
+    {
+      "path": ".gitignore",
+      "state": "file",
+      "sha256": "6a1cd80735194f3547f21d16657605c455e9176c97061567067cd9e7cc9676f7",
+      "length": 85
+    },
+    {
+      "path": "LICENSE",
+      "state": "file",
+      "sha256": "fa6dada45aa5790736390f5b89f152662fed1a35822920a5c63ef726c0724614",
+      "length": 1068
+    },
+    {
+      "path": "README.md",
+      "state": "file",
+      "sha256": "f2aa276c6daf9d697e6f486b62a06f7103f02a0118cf6cd2aef953c2e0861fee",
+      "length": 12898
+    },
+    {
+      "path": "README.zh.md",
+      "state": "file",
+      "sha256": "71eb302c4bf1cacea4b52d9f02ab08961ad9d4651aefa9a6abcbbda8c9452b6b",
+      "length": 11796
+    },
+    {
+      "path": "cordis.patch.yml",
+      "state": "file",
+      "sha256": "491ddde8045967eac063128beb6a6920acdb589e1648cadb56a2dc531ea09736",
+      "length": 323
+    },
+    {
+      "path": "lib/engines/claude.js",
+      "state": "file",
+      "sha256": "c27c4f6efc677896b602e408a054a8a91c7d4012427852bc7cca8bfbcd3b5a90",
+      "length": 9060
+    },
+    {
+      "path": "lib/engines/codebuddy.js",
+      "state": "file",
+      "sha256": "0db8a75dc0d51a72242651a92c6b0df730f1d7237194a51ffac1c09e0659fdee",
+      "length": 8772
+    },
+    {
+      "path": "lib/engines/codex.js",
+      "state": "file",
+      "sha256": "16cf4813fd0acf57932ce41d5719da3b415fe8d5772dd86ec41db71cee4e801f",
+      "length": 15236
+    },
+    {
+      "path": "lib/index.js",
+      "state": "file",
+      "sha256": "58bac5cccaab87ad0f0c0749434d68b98462efea52f90100bc360791dc0f3e79",
+      "length": 37400
+    },
+    {
+      "path": "package.json",
+      "state": "file",
+      "sha256": "7317ce625ba8b0850c1a64f43ce178a83d3b928fca7ecda939e657d2fba7a082",
+      "length": 1769
+    },
+    {
+      "path": "scripts/probe-cb-engine.mjs",
+      "state": "file",
+      "sha256": "dd4621811c4eed0842b3ca2960d194601dbfb0851effce1d3fa7011ac40c9a29",
+      "length": 2287
+    },
+    {
+      "path": "scripts/probe-claude-engine.mjs",
+      "state": "file",
+      "sha256": "358c8049cc6e5929915eecafa5941814ebe019af61a57f730302becce5d2a555",
+      "length": 1897
+    },
+    {
+      "path": "scripts/probe-codex-cont.mjs",
+      "state": "file",
+      "sha256": "d3fecf0afdb3bc7afd2238faaad4cadcdc3808df9ec462718b15218cceacc9b9",
+      "length": 1957
+    },
+    {
+      "path": "scripts/probe-codex-engine.mjs",
+      "state": "file",
+      "sha256": "938f43d429ee3b05e1c7a644533796ffbfb661b4c7ca9db4cdf88d682f3f1b80",
+      "length": 3018
+    },
+    {
+      "path": "scripts/repro-codex-isolation.mjs",
+      "state": "file",
+      "sha256": "5c0f168f655f1c6c157a8b5308edeb15526b721d4c88d33e4ec6197eeb8567d5",
+      "length": 3391
+    },
+    {
+      "path": "scripts/smoke.mjs",
+      "state": "file",
+      "sha256": "76d2e93d593a69be28dc421693608fd6fba47f311e05ee3e4ccea08f05805ad7",
+      "length": 7140
+    }
+  ],
+  "baseline_content_hash": "713bcaac7c4fa797249ca0222e72234bc3900a003e7bc6a00dffd56106511b43",
+  "filesystem_snapshot_complete": true,
+  "filesystem_snapshot_reason": null,
+  "filesystem_snapshot": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "length": 1582,
+      "mtime_utc": "2026-08-21T07:40:27.1055779Z",
+      "sha256": "ce65d6b4bfb967e3289d1ceca152d7dd91ebbdfef67e192fdba3f5eb8253ff51"
+    },
+    {
+      "path": ".gitignore",
+      "length": 85,
+      "mtime_utc": "2026-08-18T17:01:46.3409778Z",
+      "sha256": "6a1cd80735194f3547f21d16657605c455e9176c97061567067cd9e7cc9676f7"
+    },
+    {
+      "path": "LICENSE",
+      "length": 1068,
+      "mtime_utc": "2026-08-18T17:01:46.3513103Z",
+      "sha256": "fa6dada45aa5790736390f5b89f152662fed1a35822920a5c63ef726c0724614"
+    },
+    {
+      "path": "README.md",
+      "length": 12898,
+      "mtime_utc": "2026-08-21T07:36:58.5253722Z",
+      "sha256": "f2aa276c6daf9d697e6f486b62a06f7103f02a0118cf6cd2aef953c2e0861fee"
+    },
+    {
+      "path": "README.zh.md",
+      "length": 11796,
+      "mtime_utc": "2026-08-21T07:36:58.6144613Z",
+      "sha256": "71eb302c4bf1cacea4b52d9f02ab08961ad9d4651aefa9a6abcbbda8c9452b6b"
+    },
+    {
+      "path": "cordis.patch.yml",
+      "length": 323,
+      "mtime_utc": "2026-08-18T16:57:05.8875262Z",
+      "sha256": "491ddde8045967eac063128beb6a6920acdb589e1648cadb56a2dc531ea09736"
+    },
+    {
+      "path": "lib/engines/claude.js",
+      "length": 9060,
+      "mtime_utc": "2026-08-21T07:40:12.7319736Z",
+      "sha256": "c27c4f6efc677896b602e408a054a8a91c7d4012427852bc7cca8bfbcd3b5a90"
+    },
+    {
+      "path": "lib/engines/codebuddy.js",
+      "length": 8772,
+      "mtime_utc": "2026-08-21T01:54:20.7946905Z",
+      "sha256": "0db8a75dc0d51a72242651a92c6b0df730f1d7237194a51ffac1c09e0659fdee"
+    },
+    {
+      "path": "lib/engines/codex.js",
+      "length": 15236,
+      "mtime_utc": "2026-08-21T14:27:37.7173803Z",
+      "sha256": "16cf4813fd0acf57932ce41d5719da3b415fe8d5772dd86ec41db71cee4e801f"
+    },
+    {
+      "path": "lib/index.js",
+      "length": 37400,
+      "mtime_utc": "2026-08-21T14:27:19.8464102Z",
+      "sha256": "58bac5cccaab87ad0f0c0749434d68b98462efea52f90100bc360791dc0f3e79"
+    },
+    {
+      "path": "package.json",
+      "length": 1769,
+      "mtime_utc": "2026-08-21T07:40:53.4499029Z",
+      "sha256": "7317ce625ba8b0850c1a64f43ce178a83d3b928fca7ecda939e657d2fba7a082"
+    },
+    {
+      "path": "scripts/probe-cb-engine.mjs",
+      "length": 2287,
+      "mtime_utc": "2026-08-20T19:00:55.4490269Z",
+      "sha256": "dd4621811c4eed0842b3ca2960d194601dbfb0851effce1d3fa7011ac40c9a29"
+    },
+    {
+      "path": "scripts/probe-claude-engine.mjs",
+      "length": 1897,
+      "mtime_utc": "2026-08-20T18:51:20.8360395Z",
+      "sha256": "358c8049cc6e5929915eecafa5941814ebe019af61a57f730302becce5d2a555"
+    },
+    {
+      "path": "scripts/probe-codex-cont.mjs",
+      "length": 1957,
+      "mtime_utc": "2026-08-20T18:24:44.2949346Z",
+      "sha256": "d3fecf0afdb3bc7afd2238faaad4cadcdc3808df9ec462718b15218cceacc9b9"
+    },
+    {
+      "path": "scripts/probe-codex-engine.mjs",
+      "length": 3018,
+      "mtime_utc": "2026-08-20T18:25:54.6586475Z",
+      "sha256": "938f43d429ee3b05e1c7a644533796ffbfb661b4c7ca9db4cdf88d682f3f1b80"
+    },
+    {
+      "path": "scripts/repro-codex-isolation.mjs",
+      "length": 3391,
+      "mtime_utc": "2026-08-21T14:28:16.5618528Z",
+      "sha256": "5c0f168f655f1c6c157a8b5308edeb15526b721d4c88d33e4ec6197eeb8567d5"
+    },
+    {
+      "path": "scripts/smoke.mjs",
+      "length": 7140,
+      "mtime_utc": "2026-08-21T07:41:55.4625490Z",
+      "sha256": "76d2e93d593a69be28dc421693608fd6fba47f311e05ee3e4ccea08f05805ad7"
+    }
+  ],
+  "created_at": "2026-08-21T14:29:02.1723786Z",
+  "expires_at": "2026-08-22T14:29:02.1723786Z"
+}
