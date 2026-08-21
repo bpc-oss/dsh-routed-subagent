@@ -14,7 +14,11 @@ jobs:
         with:
           node-version: 22
       - name: Syntax check
-        run: node --check lib/index.js
+        run: |
+          node --check lib/index.js
+          node --check lib/engines/codex.js
+          node --check lib/engines/claude.js
+          node --check lib/engines/codebuddy.js
       - name: package.json valid
         run: node -e "const p=require('./package.json'); if(!p.name||!p.version||!p.license) process.exit(1); console.log('package ok:', p.name, p.version)"
       - name: License present
