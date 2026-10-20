@@ -24,6 +24,8 @@ const providers = []
 let bgSpec = null
 let continuableCall = null
   let lastSend = null
+  const archived = []
+  const archivedIds = new Set(['child-archived'])
 const services = {
   subagents: {
     registerProvider(p) { providers.push(p) },
@@ -44,6 +46,10 @@ const services = {
     list: async () => [{ id: 'x' }],
   },
   jobs: { start(spec) { bgSpec = spec; return 'job-1' } },
+    agentTeams: {
+      archiveTeammate: async (caller, name) => { archived.push({ caller, name }); return { name, id: 'child-1', archived: true } },
+      isArchived: (caller, id) => archivedIds.has(id),
+    },
 }
 const guards = []
 const ctx = {
@@ -98,7 +104,7 @@ assert.ok(t.parameters.properties.fork)
 assert.deepEqual(t.parameters.properties.tool_filter.required, ['deny'])
 assert.ok(!t.parameters.properties.persona, 'persona parameter removed')
 
-const call = (args) => t.execute(args, { agent: { id: 'p', options: { provider: 'bai', model: 'm' } } })
+const call = (args) => t.execute(args, { agent: { id: 'p', options: { provider: 'bai', model: 'm' } }, signal: new AbortController().signal })
 
 for (const bad of [0, -1, 2.5, '3', NaN]) {
   await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: bad }), /max_depth/)
@@ -116,6 +122,18 @@ assert.equal(helpOut.kind, 'help')
 assert.ok(helpOut.guide.includes('MODE 4 · continue'), 'guide documents continue mode')
 assert.ok(helpOut.guide.includes('run_in_background: true'), 'guide documents the one-shot refusal')
 assert.ok(helpOut.guide.includes('MODE 5 · archive'), 'guide documents archive mode')
+assert.ok(helpOut.guide.includes('MODE 6 · external engine'), 'guide documents the external-engine mode')
+assert.ok(helpOut.guide.includes('engine'), 'guide lists the engine parameter')
+assert.ok(!/slots are immutable/.test(helpOut.guide), 'guide no longer claims slots are immutable')
+assert.ok(helpOut.guide.includes('IGNORED for mode 6') || helpOut.guide.includes('IGNORED'), 'guide states preset is engine-conditional')
+
+// ── Archive mode ─────────────────────────────────────────────────────────
+const arch = await call({ archive_teammate: 'cap-01' })
+assert.equal(arch.kind, 'archived')
+assert.equal(arch.name, 'cap-01')
+assert.equal(archived.length, 1)
+assert.equal(archived[0].caller.id, 'p', 'archive passes the calling agent')
+await assert.rejects(call({ archive_teammate: '' }), /archive_teammate must be a teammate name/)
 
 // ── Continue mode: old conversations reach children through THIS tool ────
 const sent = await call({ target_agent_id: 'child-1', message: 'continue please' })
@@ -124,6 +142,7 @@ assert.equal(sent.agentId, 'child-1')
 assert.equal(sent.messageId, 'msg-1')
 assert.equal(lastSend.childId, 'child-1')
 assert.equal(lastSend.blocks[0].text, 'continue please')
+await assert.rejects(call({ target_agent_id: 'child-archived', message: 'revive' }), /is ARCHIVED and cannot be revived/)
 await assert.rejects(call({ target_agent_id: 'child-1' }), /continue mode needs BOTH/)
 
 // ── Durability policy: one-shot dispatch is refused ──────────────────────
