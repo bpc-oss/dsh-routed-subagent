@@ -110,6 +110,12 @@ await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_de
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /allow/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } }), /tool_filter/)
 
+// ── Help mode: discoverable without a fresh tool list ────────────────────
+const helpOut = await call({ help: true })
+assert.equal(helpOut.kind, 'help')
+assert.ok(helpOut.guide.includes('MODE 4 · continue'), 'guide documents continue mode')
+assert.ok(helpOut.guide.includes('run_in_background: true'), 'guide documents the one-shot refusal')
+
 // ── Continue mode: old conversations reach children through THIS tool ────
 const sent = await call({ target_agent_id: 'child-1', message: 'continue please' })
 assert.equal(sent.kind, 'message')
