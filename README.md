@@ -93,22 +93,29 @@ subagent_routed(preset="dev", prompt="Audit this repo", description="audit", con
 
 Behavior:
 
-Modes (one tool, three shapes — one-shot is gone):
+Modes (one tool, six shapes — one-shot is gone):
 
 | mode | how | returns |
 |---|---|---|
-| durable (default, only path) | nothing extra | durable subagent id — keep it going with `send_message(subagentId, ...)`; the child mounts the requested preset and keeps it across resumes. `run_in_background: true` is refused |
+| durable dispatch (default) | nothing extra | durable subagent id — continue it with `target_agent_id` + `message`; the child mounts the requested preset and keeps it across resumes. `run_in_background: true` is refused |
 | fork | `fork: true` | durable child seeded with this conversation's COMPLETED turns, then mounted on the requested preset |
-| team teammate | `team: true` (+ `name`) | real Agent Team roster member: visible in `list_agents`, addressable by name, consumes one immutable roster slot (maxMembers, failures included). Requires a Team Lead caller |
+| team teammate | `team: true` (+ `name`) | real Agent Team roster member: visible in `list_agents`, addressable by name, holds one roster slot until archived. Requires a Team Lead caller |
+| continue | `target_agent_id` + `message` | delivery receipt — reaches an existing durable child from ANY conversation (a conversation's visible tool list is frozen at start, so this is the reliable path) |
+| archive | `archive_teammate: 'name'` | retires a teammate: frees its slot and name, hides it from `list_agents`, keeps its journal history. Refused while provisioning or holding unfinished tasks |
+| external engine | `engine: 'claude' \| 'codex' \| 'codebuddy'` (+ `cwd`, `timeout_ms`) | durable id for an external CLI agent; `preset` is ignored and not required |
+
+Call `subagent_routed({ help: true })` to get the full in-tool usage guide — it is the canonical reference and is kept in step with the implementation.
 
 Parameters:
 
 | input | behavior |
 |---|---|
+| `preset` | preset id to mount. Required for the dsh engine; ignored (and unnecessary) for external engines |
 | `preset` invalid / unresolvable | error, with the roster's available preset ids |
-| `model` / `provider` | per-call model override (fail-fast pre-check lists the provider's candidates; original error preserved as `cause`) |
+| `model` / `provider` | per-call model override (fail-fast pre-check lists the provider's candidates; omit to inherit THIS conversation's route) |
 | `max_tokens` | output/token cap for the child's LLM calls (positive integer) |
-| `tool_filter` | DENY-only tool mask on top of the preset's tool surface (`{ deny: string[] }`, e.g. deny shell tools for a read-only audit). Honoured on the durable path via host patch P47 (the mask is carried in both the descriptor and the child composition) |
+| `max_depth` | recursion budget (default 3) |
+| `tool_filter` | DENY-only tool mask on top of the preset's tool surface (`{ deny: string[] }`). Honoured on the durable path via host patch P47 — carried in both the descriptor and the child composition |
 | `max_depth` not a positive integer | tool-layer validation error |
 | `run_in_background: true` | refused — one-shot dispatch is disabled by policy |
 | valid call | child fully mounted on the target preset |
