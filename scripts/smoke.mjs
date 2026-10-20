@@ -69,12 +69,20 @@ const codebuddy = providers.find((p) => p.name === 'routed-codebuddy')
 assert.ok(mount && fork, 'both routed-mount and routed-fork providers registered')
 assert.ok(claude && codex && codebuddy, 'external engine providers registered (claude/codex/codebuddy)')
 assert.equal(mount.inheritsParentContext, false)
-assert.equal(fork.inheritsParentContext, true)
-assert.deepEqual(mount.capabilities, { agentOptions: true, toolFilter: true, persona: false, depthLimit: true, outputSchema: false })
+// Host >= 0.2.0-rc.1 rejects `agentPreset` + inheritsParentContext:true, so BOTH
+// providers must publish false; fork inherits context via this plugin's own seed.
+assert.equal(fork.inheritsParentContext, false, 'fork must not advertise host-level context inheritance')
+assert.deepEqual(mount.capabilities, { agentOptions: true, agentPreset: true, toolFilter: true, persona: false, depthLimit: true, outputSchema: false })
 assert.deepEqual(fork.capabilities, mount.capabilities)
+assert.equal(mount.capabilities.agentPreset, true, 'host 0.2 gates preset requests on capabilities.agentPreset')
 assert.deepEqual(claude.capabilities, { toolFilter: false, persona: false, depthLimit: false, outputSchema: false })
 assert.deepEqual(codex.capabilities, claude.capabilities)
 assert.deepEqual(codebuddy.capabilities, claude.capabilities)
+// The internal seed split survived the decoupling: fork still seeds, fresh does not.
+const seedParent = { session: { events: [{ type: 'turn/end', seq: 0 }, { type: 'turn/end', seq: 1 }, { type: 'other' }] } }
+assert.equal((await mount.prepareContinuable({ parent: seedParent })).seed, undefined, 'fresh mount carries no parent seed')
+const forkSeed = await fork.prepareContinuable({ parent: seedParent })
+assert.equal(Array.isArray(forkSeed.seed) && forkSeed.seed.length, 2, 'fork still seeds from the parent turn prefix')
 assert.equal(tools.length, 1)
 assert.equal(tools[0].name, 'subagent_routed')
 assert.ok(tools[0].parameters.properties.max_depth)
