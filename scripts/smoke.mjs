@@ -83,15 +83,19 @@ const seedParent = { session: { events: [{ type: 'turn/end', seq: 0 }, { type: '
 assert.equal((await mount.prepareContinuable({ parent: seedParent })).seed, undefined, 'fresh mount carries no parent seed')
 const forkSeed = await fork.prepareContinuable({ parent: seedParent })
 assert.equal(Array.isArray(forkSeed.seed) && forkSeed.seed.length, 2, 'fork still seeds from the parent turn prefix')
-assert.equal(tools.length, 1)
-assert.equal(tools[0].name, 'subagent_routed')
-assert.ok(tools[0].parameters.properties.max_depth)
-assert.ok(tools[0].parameters.properties.run_in_background)
-assert.ok(tools[0].parameters.properties.fork)
-assert.deepEqual(tools[0].parameters.properties.tool_filter.required, ['deny'])
-assert.ok(!tools[0].parameters.properties.persona, 'persona parameter removed')
+const t = tools.find((x) => x.name === 'subagent_routed')
+const controlTool = tools.find((x) => x.name === 'send_message' || x.name === 'continue_subagent')
+assert.ok(controlTool, 'control tool (send_message / continue_subagent) registered')
+assert.ok(controlTool.parameters.properties.agent_id, 'agent_id parameter present')
+assert.ok(controlTool.parameters.properties.message, 'message parameter present')
+assert.equal(tools.length, 2)
+assert.ok(t, 'subagent_routed registered')
+assert.ok(t.parameters.properties.max_depth)
+assert.ok(t.parameters.properties.run_in_background)
+assert.ok(t.parameters.properties.fork)
+assert.deepEqual(t.parameters.properties.tool_filter.required, ['deny'])
+assert.ok(!t.parameters.properties.persona, 'persona parameter removed')
 
-const t = tools[0]
 const call = (args) => t.execute(args, { agent: { id: 'p', options: { provider: 'bai', model: 'm' } } })
 
 for (const bad of [0, -1, 2.5, '3', NaN]) {
@@ -106,7 +110,7 @@ await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_de
 
 // ── Durability policy: one-shot dispatch is refused ──────────────────────
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: true }), /one-shot background dispatch is disabled/)
-await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: ['write'] } }), /tool_filter is unavailable on the durable path/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /tool_filter/)
 
 // continuable is the ONLY dispatch path now
 const ct = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3 })
@@ -116,6 +120,9 @@ assert.equal(ct.preset, 'dev')
 assert.ok(continuableCall, 'startContinuable called')
 assert.equal(continuableCall.provider, 'routed-mount')
 assert.equal(continuableCall.request.preset, 'dev')
+const tfCall = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: ['write', 'shell'] } })
+assert.equal(tfCall.kind, 'continuable')
+assert.deepEqual(continuableCall.request.toolFilter, { deny: ['write', 'shell'] }, 'deny-only mask rides the durable request (P47 applies it host-side)')
 const ctFork = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, fork: true })
 assert.equal(continuableCall.provider, 'routed-fork', 'fork routes to routed-fork')
 
