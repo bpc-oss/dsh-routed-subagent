@@ -3,18 +3,18 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/github/v/release/bpc-oss/dsh-routed-subagent) ![CI](https://github.com/bpc-oss/dsh-routed-subagent/actions/workflows/ci.yml/badge.svg)
 
-A global [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets **any session dispatch a one-shot subagent fully mounted on ANY agent preset**, with **per-call model/provider override** and a **model-availability pre-check**.
+A global [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets **any session dispatch a DURABLE subagent fully mounted on ANY agent preset**, with **per-call model/provider override** and a **model-availability pre-check**.
 
 The stock `subagent` / `subagent_fork` tools force children to inherit the PARENT's preset. This plugin replaces that with a custom subagent provider whose async child setup calls `agentPresets.mount(childCtx, <preset>)` — so the child adopts the TARGET preset's complete composition: persona, prompt sections, skill catalog, and tools.
 
 ## Features
 
 
-- **Background by default, parallel dispatch** — the call returns a job id immediately (like the stock subagent tool); the conversation stays free to do other work or dispatch more children in parallel, and aborting the conversation does NOT cancel the child (stop it with job_kill). Set `run_in_background: false` to wait inline.
+- **Durable by policy, never one-shot** — one-shot children (the throwaway records that cannot be messaged and are discarded) are removed from this tool. Every call creates a continuable child and returns its durable id, so `send_message` keeps working for the rest of the session. `run_in_background: true` is refused with an explanatory error.
 - **Full preset mount** — the child runs under the target preset's standing composition (not a persona copy): identity, mission section, skills, tools.
 - **Per-call model override** — `model` / `provider` arguments route the child's LLM call to a different model than this session's (via the official `resolveChildAgentOptions` channel).
 - **Model pre-check** — an invalid model fails fast with the provider's candidate list instead of an opaque child failure.
-- **Official subagent ecosystem** — one-shot lifecycle events, UI rows, trajectory; returns the child's final output.
+- **Official subagent ecosystem** — subagent lifecycle events, UI rows, trajectory; the child stays addressable after it answers.
 - **Idempotent provider registration** — multiple presets can mount the row; the host-plane provider registry is never duplicated.
 
 ## External engines (`engine=...`)
@@ -93,14 +93,13 @@ subagent_routed(preset="dev", prompt="Audit this repo", description="audit", con
 
 Behavior:
 
-Modes (one tool, four shapes):
+Modes (one tool, three shapes — one-shot is gone):
 
 | mode | how | returns |
 |---|---|---|
-| one-shot background (default) | `run_in_background: true` (default) | job id immediately; collect with `job_output` (live progress) / stop with `job_kill`; aborting the conversation leaves the child running |
-| one-shot foreground | `run_in_background: false` | blocks until the child returns its final output |
-| fork | `fork: true` | job id / run result — the child is seeded with this conversation's COMPLETED turns (inherits the context) then mounts the requested preset on top |
-| continuable | `continuable: true` | durable subagent id — continue it later with `send_message(subagentId, ...)`; the child mounts the requested preset and keeps it across resumes |
+| durable (default, only path) | nothing extra | durable subagent id — keep it going with `send_message(subagentId, ...)`; the child mounts the requested preset and keeps it across resumes. `run_in_background: true` is refused |
+| fork | `fork: true` | durable child seeded with this conversation's COMPLETED turns, then mounted on the requested preset |
+| team teammate | `team: true` (+ `name`) | real Agent Team roster member: visible in `list_agents`, addressable by name, consumes one immutable roster slot (maxMembers, failures included). Requires a Team Lead caller |
 
 Parameters:
 
@@ -109,9 +108,9 @@ Parameters:
 | `preset` invalid / unresolvable | error, with the roster's available preset ids |
 | `model` / `provider` | per-call model override (fail-fast pre-check lists the provider's candidates; original error preserved as `cause`) |
 | `max_tokens` | output/token cap for the child's LLM calls (positive integer) |
-| `tool_filter` | DENY-only tool mask on top of the preset's tool surface (`{ deny: string[] }`, e.g. deny shell tools for a read-only audit) |
+| `tool_filter` | DENY-only tool mask on top of the preset's tool surface (`{ deny: string[] }`, e.g. deny shell tools for a read-only audit). Honoured on the durable path via host patch P47 (the mask is carried in both the descriptor and the child composition) |
 | `max_depth` not a positive integer | tool-layer validation error |
-| `fork` + `continuable` together | supported (continuable fork seeds the parent's completed turns) |
+| `run_in_background: true` | refused — one-shot dispatch is disabled by policy |
 | valid call | child fully mounted on the target preset |
 
 ## How it works
