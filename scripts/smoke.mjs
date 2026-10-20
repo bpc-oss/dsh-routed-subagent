@@ -23,6 +23,7 @@ const tools = []
 const providers = []
 let bgSpec = null
 let continuableCall = null
+  let lastSend = null
 const services = {
   subagents: {
     registerProvider(p) { providers.push(p) },
@@ -33,6 +34,7 @@ const services = {
       dispose: async () => {},
     }),
     startContinuable: async (spec) => { continuableCall = spec; return { childId: 'sub-ct-1' } },
+    sendMessage: async (sender, childId, blocks, opts) => { lastSend = { sender, childId, blocks, opts }; return 'msg-1' },
   },
   agentPresets: {
     resolve: async (id) => {
@@ -107,6 +109,15 @@ await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_de
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: {} }), /tool_filter/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /allow/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } }), /tool_filter/)
+
+// ── Continue mode: old conversations reach children through THIS tool ────
+const sent = await call({ target_agent_id: 'child-1', message: 'continue please' })
+assert.equal(sent.kind, 'message')
+assert.equal(sent.agentId, 'child-1')
+assert.equal(sent.messageId, 'msg-1')
+assert.equal(lastSend.childId, 'child-1')
+assert.equal(lastSend.blocks[0].text, 'continue please')
+await assert.rejects(call({ target_agent_id: 'child-1' }), /continue mode needs BOTH/)
 
 // ── Durability policy: one-shot dispatch is refused ──────────────────────
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: true }), /one-shot background dispatch is disabled/)
