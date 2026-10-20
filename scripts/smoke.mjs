@@ -115,6 +115,7 @@ const helpOut = await call({ help: true })
 assert.equal(helpOut.kind, 'help')
 assert.ok(helpOut.guide.includes('MODE 4 · continue'), 'guide documents continue mode')
 assert.ok(helpOut.guide.includes('run_in_background: true'), 'guide documents the one-shot refusal')
+assert.ok(helpOut.guide.includes('MODE 5 · archive'), 'guide documents archive mode')
 
 // ── Continue mode: old conversations reach children through THIS tool ────
 const sent = await call({ target_agent_id: 'child-1', message: 'continue please' })
