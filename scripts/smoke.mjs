@@ -123,6 +123,6 @@ assert.equal(continuableCall.provider, 'routed-fork', 'fork routes to routed-for
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', team: true, model: 'm' }), /team mode does not support model/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', team: true, tool_filter: { deny: ['write'] } }), /team mode does not support tool_filter/)
 
-console.log('smoke OK: background + foreground + fork + continuable verified; persona removed; tool_filter deny-only; capabilities.toolFilter=true; routed-fork provider registered; start() emits boolean isSeeded + parentAgent')
+console.log('smoke OK: durable-only policy (one-shot refused), continuable + fork routing, team param guards, inherited route, start() emits boolean isSeeded + parentAgent')
 
 
