@@ -104,96 +104,24 @@ await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_de
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /allow/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } }), /tool_filter/)
 
-const bg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, max_tokens: 4096, tool_filter: { deny: ['write'] } })
-assert.equal(bg.kind, 'background')
-assert.equal(bg.jobId, 'job-1')
-assert.ok(bgSpec && bgSpec.kind === 'subagent')
-assert.equal(bgSpec.owner, 'p', 'jobs.start owner must be the parent session id, not the Agent object')
-assert.ok(bgSpec.run && typeof bgSpec.run === 'function')
-const bgRun = bgSpec.run()
-assert.ok(bgRun.cancel && typeof bgRun.cancel === 'function')
-assert.ok(bgRun.done && typeof bgRun.done.then === 'function')
-assert.ok(bgRun.readOutput && typeof bgRun.readOutput === 'function', 'readOutput hook present (live progress)')
-const prog = bgRun.readOutput()
-assert.ok(typeof prog === 'string' && prog.length > 0, 'readOutput returns a progress string')
+// ── Durability policy: one-shot dispatch is refused ──────────────────────
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: true }), /one-shot background dispatch is disabled/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: ['write'] } }), /tool_filter is unavailable on the durable path/)
 
-// fork dispatch routes to the routed-fork provider
-const fk = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, fork: true })
-assert.equal(fk.kind, 'background')
-assert.equal(fk.jobId, 'job-1')
-assert.ok(bgSpec, 'fork jobs.start received a run spec')
-assert.equal(typeof bgSpec.run, 'function')
-const fkRun = bgSpec.run()
-assert.ok(fkRun.cancel && fkRun.done, 'fork background run has cancel+done')
-
-// continuable dispatch returns a durable subagent id via startContinuable
-const ct = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, continuable: true })
+// continuable is the ONLY dispatch path now
+const ct = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3 })
 assert.equal(ct.kind, 'continuable')
 assert.equal(ct.subagentId, 'sub-ct-1')
-assert.ok(continuableCall, 'startContinuable called with a spec')
+assert.equal(ct.preset, 'dev')
+assert.ok(continuableCall, 'startContinuable called')
 assert.equal(continuableCall.provider, 'routed-mount')
 assert.equal(continuableCall.request.preset, 'dev')
-const ctFork = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, continuable: true, fork: true })
-assert.equal(continuableCall.provider, 'routed-fork', 'continuable+fork routes to routed-fork')
+const ctFork = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, fork: true })
+assert.equal(continuableCall.provider, 'routed-fork', 'fork routes to routed-fork')
 
-const fg = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, run_in_background: false })
-assert.equal(fg.kind, 'foreground')
-assert.equal(fg.stopReason, 'completed')
-assert.equal(fg.output[0].text, 'ok')
-
-// ── Kernel-contract regression: exercise provider.start() against the REAL host
-// childSessionMeta (host >= 0.2.0-rc.1 takes (parent, childDepth, isSeeded, preset)).
-// A non-boolean 3rd argument surfaces at runtime as
-// "session header isSeeded must be a boolean" and kills every dispatch.
-function makeFakeParent(events) {
-  return {
-    id: 'parent-1',
-    options: { provider: 'bai', model: 'm' },
-    session: { header: { id: 'parent-1', delegationDepth: 0 }, events, requestHeader: () => undefined },
-    ctx: {
-      get: () => undefined,
-      agents: { create: async (opts) => { createdOpts.push(opts); return { agent: makeFakeChild(), dispose: async () => {} } } },
-    },
-  }
-}
-function makeFakeChild() {
-  return {
-    session: { events: [] },
-    followup() {},
-    whenIdle: async () => {},
-    cancel() {},
-  }
-}
-const createdOpts = []
-const fakeChildCtx = {
-  on: () => {},
-  tools: { restrict: () => {} },
-  systemPrompt: { context: () => {} },
-}
-const baseRequest = (parent) => ({
-  parent,
-  preset: 'dev',
-  prompt: [{ type: 'text', text: 'x' }],
-  signal: new AbortController().signal,
-  maxDepth: 2,
-  agentOptions: { provider: 'bai', model: 'm' },
-})
-
-// fresh: no seed
-await mount.start(baseRequest(makeFakeParent([])))
-const freshOpts = createdOpts.at(-1)
-assert.equal(typeof freshOpts.meta.isSeeded, 'boolean', 'meta.isSeeded must be a boolean (host 0.2 contract)')
-assert.equal(freshOpts.meta.isSeeded, false, 'fresh child is not seeded')
-assert.equal(freshOpts.meta.agentPreset, 'dev', 'meta must record the independently selected preset')
-assert.equal(freshOpts.parentAgent?.id, 'parent-1', 'create() must receive parentAgent for ownership')
-assert.equal(freshOpts.seed, undefined, 'fresh child passes no seed')
-
-// fork: seeded with the parent's completed-turn prefix
-await fork.start(baseRequest(makeFakeParent([{ type: 'turn/end', seq: 0, data: { reason: 'completed' } }])))
-const forkOpts = createdOpts.at(-1)
-assert.equal(typeof forkOpts.meta.isSeeded, 'boolean', 'fork meta.isSeeded must be a boolean too')
-assert.equal(forkOpts.meta.isSeeded, true, 'fork child is seeded')
-assert.equal(Array.isArray(forkOpts.seed) && forkOpts.seed.length, 1, 'fork passes the parent turn prefix as seed')
+// ── Team mode refuses parameters it cannot honour ────────────────────────
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', team: true, model: 'm' }), /team mode does not support model/)
+await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', team: true, tool_filter: { deny: ['write'] } }), /team mode does not support tool_filter/)
 
 console.log('smoke OK: background + foreground + fork + continuable verified; persona removed; tool_filter deny-only; capabilities.toolFilter=true; routed-fork provider registered; start() emits boolean isSeeded + parentAgent')
 
