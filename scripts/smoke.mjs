@@ -141,6 +141,60 @@ assert.equal(fg.kind, 'foreground')
 assert.equal(fg.stopReason, 'completed')
 assert.equal(fg.output[0].text, 'ok')
 
-console.log('smoke OK: background + foreground + fork + continuable verified; persona removed; tool_filter deny-only; capabilities.toolFilter=true; routed-fork provider registered')
+// ── Kernel-contract regression: exercise provider.start() against the REAL host
+// childSessionMeta (host >= 0.2.0-rc.1 takes (parent, childDepth, isSeeded, preset)).
+// A non-boolean 3rd argument surfaces at runtime as
+// "session header isSeeded must be a boolean" and kills every dispatch.
+function makeFakeParent(events) {
+  return {
+    id: 'parent-1',
+    options: { provider: 'bai', model: 'm' },
+    session: { header: { id: 'parent-1', delegationDepth: 0 }, events, requestHeader: () => undefined },
+    ctx: {
+      get: () => undefined,
+      agents: { create: async (opts) => { createdOpts.push(opts); return { agent: makeFakeChild(), dispose: async () => {} } } },
+    },
+  }
+}
+function makeFakeChild() {
+  return {
+    session: { events: [] },
+    followup() {},
+    whenIdle: async () => {},
+    cancel() {},
+  }
+}
+const createdOpts = []
+const fakeChildCtx = {
+  on: () => {},
+  tools: { restrict: () => {} },
+  systemPrompt: { context: () => {} },
+}
+const baseRequest = (parent) => ({
+  parent,
+  preset: 'dev',
+  prompt: [{ type: 'text', text: 'x' }],
+  signal: new AbortController().signal,
+  maxDepth: 2,
+  agentOptions: { provider: 'bai', model: 'm' },
+})
+
+// fresh: no seed
+await mount.start(baseRequest(makeFakeParent([])))
+const freshOpts = createdOpts.at(-1)
+assert.equal(typeof freshOpts.meta.isSeeded, 'boolean', 'meta.isSeeded must be a boolean (host 0.2 contract)')
+assert.equal(freshOpts.meta.isSeeded, false, 'fresh child is not seeded')
+assert.equal(freshOpts.meta.agentPreset, 'dev', 'meta must record the independently selected preset')
+assert.equal(freshOpts.parentAgent?.id, 'parent-1', 'create() must receive parentAgent for ownership')
+assert.equal(freshOpts.seed, undefined, 'fresh child passes no seed')
+
+// fork: seeded with the parent's completed-turn prefix
+await fork.start(baseRequest(makeFakeParent([{ type: 'turn/end', seq: 0, data: { reason: 'completed' } }])))
+const forkOpts = createdOpts.at(-1)
+assert.equal(typeof forkOpts.meta.isSeeded, 'boolean', 'fork meta.isSeeded must be a boolean too')
+assert.equal(forkOpts.meta.isSeeded, true, 'fork child is seeded')
+assert.equal(Array.isArray(forkOpts.seed) && forkOpts.seed.length, 1, 'fork passes the parent turn prefix as seed')
+
+console.log('smoke OK: background + foreground + fork + continuable verified; persona removed; tool_filter deny-only; capabilities.toolFilter=true; routed-fork provider registered; start() emits boolean isSeeded + parentAgent')
 
 
