@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1] - 20261020 - blank optional parameters no longer select a mode
+
+### Fixed
+
+- **A caller that fills every optional parameter with its default empty value used to be
+  hijacked into archive mode.** `archive_teammate: ""` passed the `!== undefined` test, so every
+  dispatch failed with `archive_teammate must be a teammate name`. The same latent bug existed on
+  the `target_agent_id`/`message` (continue) path, on `tool_filter: { deny: [] }`, and on
+  `engine: ""` (which fell through to the external-engine branch).
+- Rule now enforced by `isAbsent()`: `undefined`, `null`, and whitespace-only strings mean
+  "not requested", empty deny lists mean "no filter", and a blank value never selects a mode.
+  Genuinely wrong types still fail - the host schema rejects them before `execute()` runs.
 ## [0.4.0] - 20261020 — durable-only dispatch, Agent Team integration, roster archiving
 
 ### Behaviour change (breaking)

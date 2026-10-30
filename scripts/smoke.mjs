@@ -114,7 +114,9 @@ await assert.rejects(call({ prompt: 'x', preset: 'nope', description: 'd', max_d
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, max_tokens: 0 }), /max_tokens/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: {} }), /tool_filter/)
 await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { allow: ['read'] } }), /allow/)
-await assert.rejects(call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } }), /tool_filter/)
+// { deny: [] } removes nothing: treated as "no filter" instead of an error
+const emptyDeny = await call({ prompt: 'x', preset: 'dev', description: 'd', max_depth: 3, tool_filter: { deny: [] } })
+assert.equal(emptyDeny.kind, 'continuable', 'an empty deny list means no filter, not a failure')
 
 // ── Help mode: discoverable without a fresh tool list ────────────────────
 const helpOut = await call({ help: true })
@@ -133,7 +135,18 @@ assert.equal(arch.kind, 'archived')
 assert.equal(arch.name, 'cap-01')
 assert.equal(archived.length, 1)
 assert.equal(archived[0].caller.id, 'p', 'archive passes the calling agent')
-await assert.rejects(call({ archive_teammate: '' }), /archive_teammate must be a teammate name/)
+// blank optional params must never select a mode: a caller that fills EVERY
+// optional parameter with "" used to be hijacked into archive mode and fail
+await assert.rejects(call({ archive_teammate: '' }), /prompt is required/, 'blank archive_teammate is absent, not an archive request')
+await assert.rejects(call({ archive_teammate: '   ' }), /prompt is required/, 'whitespace archive_teammate is absent too')
+// the host schema rejects a non-string before execute() ever runs
+await assert.rejects(call({ archive_teammate: 7 }), /must be a string/, 'a non-string archive_teammate is rejected by the schema')
+const blanks = await call({
+  prompt: 'x', preset: 'dev', description: 'd',
+  archive_teammate: '', target_agent_id: '', message: '', provider: '',
+  model: '', cwd: '', engine: '', name: '', tool_filter: { deny: [] },
+})
+assert.equal(blanks.kind, 'continuable', 'a payload of blank optional params still dispatches')
 
 // ── Continue mode: old conversations reach children through THIS tool ────
 const sent = await call({ target_agent_id: 'child-1', message: 'continue please' })

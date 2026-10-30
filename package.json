@@ -1,6 +1,6 @@
 {
   "name": "dsh-routed-subagent",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Global DeepSeek Harness plugin: subagent_routed — run a one-shot subagent fully mounted on ANY agent preset, from ANY session, with per-call model/provider override, a model-availability pre-check, and external CLI engines (codex / claude / codebuddy).",
   "type": "module",
   "main": "lib/index.js",
